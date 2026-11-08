@@ -15,9 +15,34 @@ Designed to operate seamlessly on congested venue mobile networks, this portal f
 
 ---
 
-## 🚀 Features Delivered (Phase 1, Phase 2, Phase 3 & Phase 4)
+## 🚀 Features Delivered (Phase 1, Phase 2, Phase 3, Phase 4 & Phase 5)
 
-### 🏆 1. Public Item Result View & Tied-Winner Cards (Phase 4)
+### 🏆 1. Live Championships, Podiums & Kalaprathibha Engine (Phase 5)
+- **Interactive 3-Step Olympic Podium (`<Podium />`):**
+  - Real 3-step podium with Gold (Center, tallest, Crown & Trophy), Silver (Left, Medal), and Bronze (Right, Medal) steps.
+  - Full support for ties on any step without layout breaking.
+- **Strict Fest Tabulation Rules Applied:**
+  - **Group Deduplication:** For `mode === 'GROUP'`, units are awarded the highest score achieved by their group entry once (`Math.max`), preventing duplicate points when multiple members are enrolled.
+  - **Single Items:** Point values sum normally for the unit.
+- **Three Specialized Views:**
+  1. **🏆 Overall Unit Championship:** Live points table across all published items. Clicking on any unit row opens the **Unit Scorecard Modal** listing every student, rank, and point contribution.
+  2. **📂 Category-wise Unit Championship:** Filter standings and podiums specifically for `KIDS`, `CHILDREN`, `SUB JUNIOR`, `JUNIOR`, and `TEENS`.
+  3. **🌟 Individual Champions (Manual Page 4):**
+     - **Single Items Exclusively:** Only Single items count toward the primary individual score.
+     - **Official Qualification Criteria:** Participant must hold $\ge 1$ First Rank in a Single item **AND** accumulate $>15$ Single Points ($\ge 16$ pts).
+     - **Group Tie-Breaker:** When single scores tie, published Group item points (Rank 1/2/3 = 3/2/1 pts, Grade A/B/C = 3/2/1 pts) break the tie. If still equal, Joint Champions are declared.
+     - **Early Festival Contenders Strip:** Displays live top contenders with a visual progress bar toward 16 points (e.g. `10/16 pts - Needs 6 more pts & 1st rank`).
+
+### 📄 2. Official 2024-Style Result PDF Generator (Phase 5)
+- **High-DPI 800px Off-screen Render:** Uses `html2canvas` + `jspdf` to render dedicated DOM templates into A4 PDFs (`Sargolsav_2026_Item_${code}_Result.pdf`).
+- **100% Malayalam Typography Fidelity:** Avoids font breaking in standard jsPDF by rendering Noto Sans Malayalam at 2x DPI.
+- **Identical to Official 2024 Nilambur Mandalam Result Sheet:** Includes official header, logo, item code, category, mode, clean bordered table (`SL NO`, `Reg NO`, `Name`, `Unit`, `GRADE`, `RANK`), and committee certification footer.
+- **One-Click Download:** Available in both Public Result Sheet modal and Admin Score Sheet management bar.
+
+### 🌐 3. Vercel SPA Direct Routing (`vercel.json`) (Phase 5)
+- Catch-all rewrites rule to route all direct URL visits (`/admin`, `/championships`) directly to `index.html` preventing 404 errors on Vercel deployments.
+
+### 🔍 4. Public Item Result View & Tied-Winner Cards (Phase 4)
 - **Strict Public Data Privacy:** Public views strictly omit `judge1`, `judge2`, `judge3`, `total_score`, `percentage`, and `chest_no`. Only verified Rank, Grade, Points, Name, Reg No, and Unit are displayed.
 - **Published Item Modal:**
   - Header showing Item Code badge, Category badge, Mode badge (`SINGLE`/`GROUP`), bold Malayalam name, and English name.

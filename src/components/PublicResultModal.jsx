@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
+import { downloadResultPdf } from '../lib/pdfGenerator';
 import {
   X,
   Trophy,
@@ -7,6 +9,7 @@ import {
   Award,
   Clock,
   Printer,
+  Download,
   Share2,
   Check,
   AlertCircle,
@@ -20,6 +23,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const isPublished = Boolean(item?.is_published);
 
@@ -118,6 +122,20 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
     window.print();
   };
 
+  // PDF Export Handler
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf || !item) return;
+    setIsDownloadingPdf(true);
+    try {
+      await downloadResultPdf(`public-result-pdf-${item.code}`, item.code);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('Could not generate PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   // WhatsApp / Clipboard Share Handler
   const handleShare = () => {
     const title = `*MSM-CIER Sargolsav 2026 - Nilambur Sub-District*\n*Result: #${item.code} - ${item.name_ml} (${item.name_en})*\nCategory: ${item.category} | Mode: ${item.mode}\n\n`;
@@ -200,6 +218,26 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 print:hidden">
             {isPublished && (
               <>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F26430] hover:bg-[#d95322] text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Download Official Result PDF"
+                >
+                  {isDownloadingPdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="hidden sm:inline">Generating PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Download PDF</span>
+                    </>
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={handleShare}
@@ -530,6 +568,15 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
           </button>
         </div>
       </div>
+
+      {/* Off-screen high-res template for PDF generation */}
+      {isPublished && (
+        <OfficialResultPdfTemplate
+          containerId={`public-result-pdf-${item.code}`}
+          item={item}
+          results={results}
+        />
+      )}
     </div>
   );
 }

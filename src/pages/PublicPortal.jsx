@@ -7,6 +7,7 @@ import ItemCard from '../components/ItemCard';
 import RecentResultsStrip from '../components/RecentResultsStrip';
 import PublicResultModal from '../components/PublicResultModal';
 import GlobalSearchPanel from '../components/GlobalSearchPanel';
+import ChampionshipsTab from '../components/ChampionshipsTab';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers } from 'lucide-react';
 
 export default function PublicPortal() {
@@ -263,29 +264,8 @@ export default function PublicPortal() {
           </div>
         )}
 
-        {/* Championships Tab (Placeholder for Phase 5) */}
-        {activeTab === 'championships' && (
-          <div className="max-w-2xl mx-auto py-12 px-4 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shadow-xs">
-              <Trophy className="w-8 h-8" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B254B]">
-              Championship Standings
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Overall Unit Championship, Zone Trophies, and Category-wise point tables will be wired and updated live in Phase 5.
-            </p>
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => setActiveTab('results')}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-[#1B254B] text-white hover:bg-navy-800 transition-colors shadow-xs"
-              >
-                ← Back to Results
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Championships & Podiums Tab */}
+        {activeTab === 'championships' && <ChampionshipsTab />}
 
         {/* Resources Tab (Placeholder for Phase 6) */}
         {activeTab === 'resources' && (

@@ -20,7 +20,9 @@ import {
   KeyRound,
   ShieldAlert,
   Info,
+  Trophy,
 } from 'lucide-react';
+import ChampionshipsTab from '../components/ChampionshipsTab';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
 
@@ -279,6 +281,7 @@ export default function AdminPortal() {
     { id: 'settings', label: 'Settings', icon: Sliders },
     { id: 'participants', label: 'Participants (Bulk Import)', icon: Users },
     { id: 'scoresheet', label: 'Score Sheet (Tabulation)', icon: FileSpreadsheet },
+    { id: 'championships', label: 'Championships', icon: Trophy },
     { id: 'resources', label: 'Resources', icon: FolderArchive },
   ];
 
@@ -568,6 +571,9 @@ export default function AdminPortal() {
             onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
           />
         )}
+
+        {/* Championships & Standings Tab */}
+        {activeTab === 'championships' && <ChampionshipsTab />}
 
         {/* Resources Tab (Placeholder for Phase 6) */}
         {activeTab === 'resources' && (

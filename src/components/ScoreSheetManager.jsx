@@ -22,7 +22,10 @@ import {
   ShieldAlert,
   RotateCcw,
   Sparkles,
+  Download,
 } from 'lucide-react';
+import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
+import { downloadResultPdf } from '../lib/pdfGenerator';
 
 export default function ScoreSheetManager({ onShowToast }) {
   // Category & Item selection
@@ -40,6 +43,7 @@ export default function ScoreSheetManager({ onShowToast }) {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Preview & Publish Modal
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -461,6 +465,21 @@ export default function ScoreSheetManager({ onShowToast }) {
     }
   };
 
+  // Download Official Result PDF Handler
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf || !currentItem) return;
+    setIsDownloadingPdf(true);
+    try {
+      await downloadResultPdf(`admin-result-pdf-${currentItem.code}`, currentItem.code);
+      if (onShowToast) onShowToast('Result PDF downloaded successfully!', 'success');
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      if (onShowToast) onShowToast(`Failed to generate PDF: ${err.message}`, 'error');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Category & Item Selector Bar */}
@@ -850,19 +869,36 @@ export default function ScoreSheetManager({ onShowToast }) {
             <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 {currentItem.is_published && (
-                  <button
-                    type="button"
-                    onClick={handleUnpublish}
-                    disabled={isUnpublishing}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                  >
-                    {isUnpublishing ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    )}
-                    <span>Unpublish Live Result</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDownloadPdf}
+                      disabled={isDownloadingPdf}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                      title="Download Official Result PDF"
+                    >
+                      {isDownloadingPdf ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                      <span>📥 Download Result PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleUnpublish}
+                      disabled={isUnpublishing}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isUnpublishing ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      )}
+                      <span>Unpublish Live Result</span>
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -1012,6 +1048,15 @@ export default function ScoreSheetManager({ onShowToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Off-screen high-res template for PDF generation */}
+      {currentItem && (
+        <OfficialResultPdfTemplate
+          containerId={`admin-result-pdf-${currentItem.code}`}
+          item={currentItem}
+          results={rows.filter((r) => r.rank || r.grade)}
+        />
       )}
     </div>
   );
