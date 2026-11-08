@@ -11,49 +11,45 @@
 
 Designed to operate seamlessly on congested venue mobile networks, this portal features:
 - A high-speed **Public Item & Result Browser** for participants, units, and parents.
-- A secured **Stealth Committee Admin Portal** (`/admin`) for festival officials to adjust festival announcements, scoring rules, and tabulation settings in real-time.
+- A secured **Stealth Committee Admin Portal** (`/admin`) for festival officials to adjust festival announcements, scoring rules, import contenders, and inspect live diagnostics.
 
 ---
 
-## 🚀 Phase 1 Features Delivered
+## 🚀 Features Delivered (Phase 1 & Phase 2)
 
-### 1. Public Portal (`/`)
-- **Emergency / Broadcast Announcement Bar:** Dynamic banner with megaphone icon controlled via committee settings.
-- **Festival Branding Header:** Clean festival title, Kerala MSM-CIER & Markazudawa badge, and Nilambur sub-district location subtitle.
-- **3-Tab Navigation:**
-  - **Results (Active):** Category and item browser.
-  - **Championships (Phase 5 Placeholder):** Unit standings and category trophies.
-  - **Resources (Phase 6 Placeholder):** Festival handbook, rulebook, and mark sheet downloads.
-- **Category Filter Pills:** Instant 1-click filtering across all 5 official categories:
-  - `KIDS` (Coral Orange)
-  - `CHILDREN` (Emerald Green)
-  - `SUB JUNIOR` (Royal Blue)
-  - `JUNIOR` (Purple)
-  - `TEENS` (Teal)
-- **Item Cards Grid:**
-  - Item code badge (e.g. `#101`)
-  - Malayalam name in bold typography (`Noto Sans Malayalam`)
-  - English name in subtitle typography (`Plus Jakarta Sans`)
-  - Mode badge (`SINGLE` / `GROUP`)
-  - Live status indicator: `Result Published` (green) or `Awaiting Result` (slate).
-- **Global Search Ready:** Interactive search bar prepared for Phase 4 participant queries with live client-side item filtering.
-- **Privacy Enforcement:** Public queries strictly omit judge scores, percentages, and admin credentials.
+### 🎨 1. Official Festival Logo & Identity (Phase 2)
+- High-resolution official **Sargothsav 2026 artwork** integrated into `public/logo.png` and configured as the browser favicon.
+- **Public Header (`/`):** Features the official festival logo alongside the festival title and MSM-CIER badges.
+- **Admin Header (`/admin`):** Logo is encased in a clean white rounded pill container (`bg-white p-1 rounded-xl shadow-xs`) on top of the deep navy `#1B254B` header to ensure artwork colours pop vibrantly.
+- **Admin PIN Gate:** Unlocking screen showcases the official festival logo.
 
-### 2. Stealth Admin Portal (`/admin`)
-- **Stealth Route:** No administrative or login links visible anywhere on public pages.
-- **PIN Gate:** Protected by 4-digit committee security PIN (Default: `2026`) verified against Supabase `settings` table with local session caching in `sessionStorage`.
-- **Top Admin Header:** Includes quick **"View Live Site ↗"** shortcut and **"Lock / Logout"** session terminator.
-- **4 Admin Navigation Tabs:**
-  - **Settings (Phase 1 Complete):**
-    - Announcement text editor.
-    - Show / Hide announcement banner toggle.
-    - Enforce Minimum 2 Entries Rule (Page 2, Rule 12) toggle with explanatory guidance.
-    - Admin PIN updater.
-    - Button locking with loading spinner to prevent double submissions.
-    - Green toast feedback notifications on save.
-  - **Score Sheet (Tabulation) (Phase 3 Placeholder)**
-  - **Participants (Bulk Import) (Phase 2 Placeholder)**
-  - **Resources (Phase 6 Placeholder)**
+### 🧑‍💼 2. Bulk Participant Importer & Directory (Phase 2)
+- **Official MSM CSV & Table Paste Importer (Mode A):**
+  - **CSV File Upload:** Drag-and-drop or select official CSV files exported from the MSM portal.
+  - **Raw Text / Clipboard Paste:** Directly paste copied table rows (supports tab-separated values from website tables and comma-separated rows).
+  - **Flexible Parsing Engine:** Extracts `reg_no`, `name`, `category` (normalized to `KIDS`, `CHILDREN`, `SUB JUNIOR`, `JUNIOR`, `TEENS`), `district`, `zone`, `unit`, `madrasa`, and parses comma-separated lists of `Single` and `Group` item codes.
+  - **Pre-Import Data Validation:** Displays detected counts, flags unmapped or missing item codes, and renders a live preview table.
+  - **Score-Safe Upserts:** Executes bulk upsert into `participants` table (`onConflict: 'reg_no'`) and `participations` table (`onConflict: 'item_code,reg_no', ignoreDuplicates: true`), guaranteeing existing judge scores are **never overwritten** upon re-import.
+- **Single Participant Add / Edit Modal (Mode B):**
+  - Instant manual registration or update of `reg_no`, `name`, `category`, `unit`, `madrasa`.
+  - Dynamic multi-select checkboxes displaying items belonging to the selected category.
+- **Searchable Participant Directory:**
+  - Real-time summary stat cards: **Total Participants**, **Total Units**, and **Total Item Enrollments**.
+  - Multi-parameter search bar (`reg_no`, `name`, or `unit`).
+  - Filtering by **Category** and **Unit**.
+  - Interactive table showing registration badges, unit, enrolled item badges, and **Edit** / **Delete** controls (with confirmation safety dialogs).
+
+### 🖥️ 3. Admin Diagnostics & Activity Console (Phase 2)
+- **Live Terminal-Style Console:** Embedded inside `/admin -> Settings` tab.
+- **Supabase DB Ping & Latency Tester:** Real-time roundtrip latency check in milliseconds (e.g. `Connected - 78ms`) querying `settings` and `items` count.
+- **Client-Side Audit Trail:** Records operations into `sessionStorage` (up to 50 logs) with color-coded status badges (`SUCCESS` green, `WARNING` yellow, `ERROR` red), action tags, timestamps, and messages.
+- **Console Utilities:** One-click **"Copy Logs"** to clipboard and **"Clear Console"** buttons.
+
+### 🌐 4. Public Portal (`/`) (Phase 1)
+- **Broadcast Announcement Bar:** Dynamic banner with megaphone icon controlled via committee settings.
+- **Category Filter Pills:** Instant 1-click filtering across `KIDS` (`#F26430`), `CHILDREN` (`#16A34A`), `SUB JUNIOR` (`#2563EB`), `JUNIOR` (`#7C3AED`), and `TEENS` (`#0D9488`).
+- **Item Cards Grid:** Malayalam name (`Noto Sans Malayalam`), English name (`Plus Jakarta Sans`), item code badge, mode tag (`SINGLE`/`GROUP`), and live status (`Result Published` / `Awaiting Result`).
+- **Data Privacy:** Public queries strictly omit judge scores, percentages, and admin credentials.
 
 ---
 
@@ -65,34 +61,6 @@ Designed to operate seamlessly on congested venue mobile networks, this portal f
 - **Routing:** React Router v7
 - **Database / Backend:** Supabase (`@supabase/supabase-js`)
 - **Typography:** Google Fonts (`Plus Jakarta Sans` & `Noto Sans Malayalam`)
-
----
-
-## 📦 Database Schema (Pre-Configured Tables)
-
-1. `settings`: `id`, `announcement_text`, `show_announcement`, `enforce_min_entry_rule`, `admin_pin`
-2. `items`: `code`, `name_ml`, `name_en`, `category`, `mode`, `is_published`, `published_at`
-3. `participants`: `reg_no`, `name`, `category`, `district`, `zone`, `unit`, `madrasa`
-4. `participations`: `id`, `item_code`, `reg_no`, `chest_no`, `judge1`, `judge2`, `judge3`, `total_score`, `percentage`, `grade`, `rank`, `points`
-5. `resources`: `id`, `title`, `file_url`, `file_type`, `created_at`
-
----
-
-## ⚙️ Environment Variables
-
-Create `.env` or `.env.local` in the project root:
-
-```env
-# Supabase Configuration
-VITE_SUPABASE_URL=https://vmxszvgtyyboyeojjsnk.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_u8bIDf8RceSX6m5UMg6sIA_Y39v7sqt
-
-# Next.js Fallback Compatibility
-NEXT_PUBLIC_SUPABASE_URL=https://vmxszvgtyyboyeojjsnk.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_u8bIDf8RceSX6m5UMg6sIA_Y39v7sqt
-```
-
-*(Note: Safe fallback credentials are also bundled in `src/lib/supabase.js` so the application connects out of the box).*
 
 ---
 
@@ -116,7 +84,7 @@ npm run dev
 
 Open your browser at:
 - **Public Results Portal:** [http://localhost:5173/](http://localhost:5173/)
-- **Admin Portal:** [http://localhost:5173/admin](http://localhost:5173/admin) (Default PIN: `2026`)
+- **Admin Portal:** [http://localhost:5173/admin](http://localhost:5173/admin) *(Default PIN: `2026`)*
 
 ### 4. Build for production
 ```bash
@@ -125,7 +93,8 @@ npm run build
 
 ---
 
-## 📋 Security & Architecture Notes
-- **Zero Double-Click State:** Category pill filters and settings updates avoid stale closures by passing values directly to async workers.
+## 📋 Security & Anti-Bug Architecture
+- **Zero Double-Click Bugs:** Category pill filters and save mutations pass target values directly into handlers without relying on stale React closures.
 - **Button Locking:** Every mutation locks the trigger button in an `isSubmitting` state with an animated spinner until the database write finishes.
+- **Safe Re-Imports:** Bulk enrollments utilize `onConflict: 'item_code,reg_no', ignoreDuplicates: true` ensuring existing scores/grades are preserved.
 - **Public Data Privacy:** Public views never request sensitive scoring fields (`judge1`, `judge2`, `judge3`, `total_score`, `percentage`, `admin_pin`).

@@ -11,31 +11,43 @@ export default function Header({ activeTab, onTabChange }) {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       {/* Top Festival Branding */}
-      <div className="max-w-6xl mx-auto px-4 pt-5 pb-3">
-        <div className="flex flex-col items-center text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-slate-100 text-[#1B254B] border border-slate-200/80 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#F26430]"></span>
-            <span>MSM-CIER Kerala</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-600 font-medium">Markazudawa</span>
+      <div className="max-w-6xl mx-auto px-4 pt-4 pb-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center sm:text-left">
+          {/* Official Logo */}
+          <div className="shrink-0 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="MSM-CIER Sargolsav 2026 Logo"
+              className="h-16 sm:h-20 w-auto object-contain transition-transform hover:scale-105"
+            />
           </div>
 
-          {/* Main Title */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1B254B] font-sans">
-            SARGOLSAV <span className="text-[#F26430]">2026</span>
-          </h1>
+          {/* Titles & Badges */}
+          <div className="flex flex-col items-center sm:items-start">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-slate-100 text-[#1B254B] border border-slate-200/80 mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F26430]"></span>
+              <span>MSM-CIER Kerala</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-600 font-medium">Markazudawa</span>
+            </div>
 
-          {/* Subtitle */}
-          <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500 flex items-center justify-center gap-1.5 flex-wrap">
-            <span>Nilambur Sub-District</span>
-            <span className="text-slate-300">•</span>
-            <span className="text-slate-700 font-semibold">Amal College, Myladi</span>
-          </p>
+            {/* Main Title */}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1B254B] font-sans">
+              SARGOLSAV <span className="text-[#F26430]">2026</span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
+              <span>Nilambur Sub-District</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-700 font-semibold">Amal College, Myladi</span>
+            </p>
+          </div>
         </div>
 
         {/* 3-Tab Navigation Bar */}
-        <div className="mt-5 flex justify-center border-t border-slate-100 pt-1">
+        <div className="mt-4 flex justify-center border-t border-slate-100 pt-2">
           <nav className="flex space-x-1 sm:space-x-2" aria-label="Tabs">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -45,7 +57,7 @@ export default function Header({ activeTab, onTabChange }) {
                   key={tab.id}
                   type="button"
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[#1B254B] text-white shadow-sm'
                       : 'text-slate-600 hover:text-[#1B254B] hover:bg-slate-100'

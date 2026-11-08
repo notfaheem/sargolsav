@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
 import Toast from '../components/Toast';
+import DiagnosticsConsole from '../components/DiagnosticsConsole';
+import ParticipantManager from '../components/ParticipantManager';
 import {
   Lock,
   Unlock,
@@ -16,7 +19,6 @@ import {
   KeyRound,
   ShieldAlert,
   Info,
-  CheckCircle2,
 } from 'lucide-react';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
@@ -27,7 +29,7 @@ export default function AdminPortal() {
   const [pinError, setPinError] = useState('');
   const [isVerifyingPin, setIsVerifyingPin] = useState(false);
 
-  // Active Admin Tab: default to 'settings' for Phase 1
+  // Active Admin Tab: default to 'settings' or 'participants'
   const [activeTab, setActiveTab] = useState('settings');
 
   // Settings State
@@ -62,6 +64,7 @@ export default function AdminPortal() {
 
       if (error) {
         console.error('Error fetching settings:', error);
+        logger.error('SETTINGS_FETCH', `Failed to load settings: ${error.message}`);
         return;
       }
 
@@ -73,9 +76,11 @@ export default function AdminPortal() {
           enforce_min_entry_rule: Boolean(data.enforce_min_entry_rule),
           admin_pin: data.admin_pin || '2026',
         });
+        logger.success('SETTINGS_FETCH', 'Loaded festival configuration row (id=1)');
       }
     } catch (err) {
       console.error('Unexpected error loading settings:', err);
+      logger.error('SETTINGS_FETCH', `Unexpected error: ${err.message}`);
     } finally {
       setIsLoadingSettings(false);
     }
@@ -106,8 +111,10 @@ export default function AdminPortal() {
         sessionStorage.setItem(SESSION_STORAGE_KEY, 'authenticated');
         setIsAuthenticated(true);
         setInputPin('');
+        logger.success('AUTH_LOGIN', 'Admin session authenticated successfully');
       } else {
         setPinError('Incorrect PIN. Please enter the valid 4-digit committee PIN.');
+        logger.warn('AUTH_LOGIN_FAILED', 'Invalid PIN entered');
       }
     } catch (err) {
       console.error('PIN verification error:', err);
@@ -115,8 +122,10 @@ export default function AdminPortal() {
       if (inputPin.trim() === '2026') {
         sessionStorage.setItem(SESSION_STORAGE_KEY, 'authenticated');
         setIsAuthenticated(true);
+        logger.success('AUTH_LOGIN', 'Admin session unlocked via local fallback PIN');
       } else {
         setPinError('Incorrect PIN. Please check your network and try again.');
+        logger.error('AUTH_LOGIN_ERROR', err.message);
       }
     } finally {
       setIsVerifyingPin(false);
@@ -128,6 +137,7 @@ export default function AdminPortal() {
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
     setIsAuthenticated(false);
     setInputPin('');
+    logger.warn('AUTH_LOGOUT', 'Admin session locked by user');
   };
 
   // Handle Save Settings
@@ -151,6 +161,11 @@ export default function AdminPortal() {
         throw error;
       }
 
+      logger.success('SETTINGS_UPDATE', 'Updated announcement, minimum entry rule, and PIN', {
+        showAnnouncement: settings.show_announcement,
+        enforceMinRule: settings.enforce_min_entry_rule,
+      });
+
       setToast({
         message: 'Settings saved successfully!',
         type: 'success',
@@ -160,6 +175,7 @@ export default function AdminPortal() {
       }, 3500);
     } catch (err) {
       console.error('Error saving settings:', err);
+      logger.error('SETTINGS_UPDATE', `Save failed: ${err.message}`);
       setToast({
         message: 'Failed to save settings. Please try again.',
         type: 'error',
@@ -175,9 +191,15 @@ export default function AdminPortal() {
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center px-4 py-12">
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-6 sm:p-8">
           <div className="text-center mb-6">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-navy-50 text-[#1B254B] border border-slate-200 flex items-center justify-center shadow-xs mb-3">
-              <Lock className="w-7 h-7 text-[#1B254B]" />
+            {/* Official Logo */}
+            <div className="mb-3 flex justify-center">
+              <img
+                src="/logo.png"
+                alt="MSM-CIER Sargolsav 2026 Logo"
+                className="h-20 w-auto object-contain drop-shadow-xs"
+              />
             </div>
+
             <h1 className="text-xl sm:text-2xl font-extrabold text-[#1B254B] tracking-tight">
               SARGOLSAV 2026
             </h1>
@@ -191,7 +213,10 @@ export default function AdminPortal() {
 
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
-              <label htmlFor="pin-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="pin-input"
+                className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+              >
                 Admin Security PIN
               </label>
               <div className="relative">
@@ -248,11 +273,11 @@ export default function AdminPortal() {
     );
   }
 
-  // Authenticated Admin Dashboard
+  // Authenticated Admin Dashboard Tabs
   const adminTabs = [
     { id: 'settings', label: 'Settings', icon: Sliders },
-    { id: 'scoresheet', label: 'Score Sheet (Tabulation)', icon: FileSpreadsheet },
     { id: 'participants', label: 'Participants (Bulk Import)', icon: Users },
+    { id: 'scoresheet', label: 'Score Sheet (Tabulation)', icon: FileSpreadsheet },
     { id: 'resources', label: 'Resources', icon: FolderArchive },
   ];
 
@@ -267,21 +292,27 @@ export default function AdminPortal() {
 
       {/* Admin Top Header */}
       <header className="bg-[#1B254B] text-white sticky top-0 z-30 shadow-md">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/10 border border-white/15">
-              <Sliders className="w-5 h-5 text-[#F26430]" />
+            {/* Official Logo in White Rounded Pill Container so vibrant colours pop cleanly */}
+            <div className="bg-white p-1 rounded-xl shadow-xs shrink-0 flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Sargolsav Logo"
+                className="h-9 w-auto object-contain"
+              />
             </div>
+
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight">
                   SARGOLSAV 2026 Admin Portal
                 </h1>
                 <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#F26430] text-white">
                   Nilambur Sub-District
                 </span>
               </div>
-              <p className="text-xs text-slate-300 hidden sm:block">
+              <p className="text-[11px] text-slate-300 hidden sm:block">
                 Amal College, Myladi • Tabulation & Festival Management Desk
               </p>
             </div>
@@ -315,7 +346,10 @@ export default function AdminPortal() {
         {/* Admin Navigation Tabs */}
         <div className="border-t border-white/10 bg-[#161F3E]">
           <div className="max-w-6xl mx-auto px-4">
-            <nav className="flex space-x-1 sm:space-x-4 overflow-x-auto scrollbar-none py-2" aria-label="Admin Tabs">
+            <nav
+              className="flex space-x-1 sm:space-x-4 overflow-x-auto scrollbar-none py-2"
+              aria-label="Admin Tabs"
+            >
               {adminTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -342,9 +376,9 @@ export default function AdminPortal() {
 
       {/* Admin Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8">
-        {/* Settings Tab - Fully Functional */}
+        {/* Settings Tab - Fully Functional with System Diagnostics Console */}
         {activeTab === 'settings' && (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-8">
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
               <div className="flex items-center justify-between pb-6 border-b border-slate-100">
                 <div>
@@ -390,7 +424,10 @@ export default function AdminPortal() {
                 {/* 2. Show Announcement Banner Switch */}
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                   <div className="space-y-0.5 pr-4">
-                    <label htmlFor="show_announcement" className="text-sm font-bold text-[#1B254B] cursor-pointer">
+                    <label
+                      htmlFor="show_announcement"
+                      className="text-sm font-bold text-[#1B254B] cursor-pointer"
+                    >
                       Show Announcement Banner
                     </label>
                     <p className="text-xs text-slate-500">
@@ -403,7 +440,10 @@ export default function AdminPortal() {
                     id="show_announcement"
                     aria-checked={settings.show_announcement}
                     onClick={() =>
-                      setSettings((prev) => ({ ...prev, show_announcement: !prev.show_announcement }))
+                      setSettings((prev) => ({
+                        ...prev,
+                        show_announcement: !prev.show_announcement,
+                      }))
                     }
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-[#F26430] ${
                       settings.show_announcement ? 'bg-[#16A34A]' : 'bg-slate-300'
@@ -420,11 +460,12 @@ export default function AdminPortal() {
                 {/* 3. Enforce Minimum 2 Entries Rule Switch */}
                 <div className="flex items-start justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                   <div className="space-y-1 pr-4">
-                    <div className="flex items-center gap-1.5">
-                      <label htmlFor="enforce_min_entry_rule" className="text-sm font-bold text-[#1B254B] cursor-pointer">
-                        Enforce Minimum 2 Entries Rule (Page 2, Rule 12)
-                      </label>
-                    </div>
+                    <label
+                      htmlFor="enforce_min_entry_rule"
+                      className="text-sm font-bold text-[#1B254B] cursor-pointer"
+                    >
+                      Enforce Minimum 2 Entries Rule (Page 2, Rule 12)
+                    </label>
                     <p className="text-xs text-slate-600 leading-relaxed">
                       <em>
                         "When ON, items with only 1 participant receive Grades only (0 points). Keep OFF to award normal rank & grade points to single entries."
@@ -507,7 +548,17 @@ export default function AdminPortal() {
                 </div>
               </form>
             </div>
+
+            {/* System Diagnostics & Activity Console Panel (Phase 2) */}
+            <DiagnosticsConsole />
           </div>
+        )}
+
+        {/* Participants (Bulk Import & Manager) - Fully Functional in Phase 2 */}
+        {activeTab === 'participants' && (
+          <ParticipantManager
+            onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
+          />
         )}
 
         {/* Tabulation Score Sheet (Placeholder for Phase 3) */}
@@ -521,30 +572,6 @@ export default function AdminPortal() {
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               Judge score entry (Judge 1, Judge 2, Judge 3), automated total/percentage/grade computation, rank tie-breakers, and 1-click result publishing will be wired in Phase 3.
-            </p>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('settings')}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-[#1B254B] hover:bg-slate-200"
-              >
-                Go to Settings
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Participants Bulk Import (Placeholder for Phase 2) */}
-        {activeTab === 'participants' && (
-          <div className="max-w-2xl mx-auto py-12 px-4 text-center space-y-4 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-[#2563EB] border border-blue-200 flex items-center justify-center shadow-xs">
-              <Users className="w-8 h-8" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B254B]">
-              Participant Registration & Bulk Import
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Excel / CSV bulk importer for participants, chest number allocation, and item assignment validation will be wired in Phase 2.
             </p>
             <div className="pt-2">
               <button
