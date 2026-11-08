@@ -25,6 +25,7 @@ import {
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import LiveAnalyticsBanner from '../components/LiveAnalyticsBanner';
 import AdminResourceManager from '../components/AdminResourceManager';
+import DeveloperFooter from '../components/DeveloperFooter';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
 
@@ -589,6 +590,13 @@ export default function AdminPortal() {
           />
         )}
       </main>
+
+      {/* Admin Footer */}
+      <footer className="mt-auto border-t border-slate-200 bg-white py-4 px-4">
+        <div className="max-w-6xl mx-auto">
+          <DeveloperFooter />
+        </div>
+      </footer>
     </div>
   );
 }

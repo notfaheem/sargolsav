@@ -9,6 +9,7 @@ import PublicResultModal from '../components/PublicResultModal';
 import GlobalSearchPanel from '../components/GlobalSearchPanel';
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import PublicResourcesTab from '../components/PublicResourcesTab';
+import DeveloperFooter from '../components/DeveloperFooter';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers } from 'lucide-react';
 
 export default function PublicPortal() {
@@ -325,10 +326,13 @@ export default function PublicPortal() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-6 px-4 text-center print:hidden">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
-          <p>© 2026 MSM-CIER Nilambur Sub-District. All Rights Reserved.</p>
-          <p>Venue: Amal College of Advanced Studies, Myladi, Nilambur</p>
+      <footer className="mt-auto border-t border-slate-200 bg-white py-6 px-4 print:hidden">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <p>© 2026 MSM-CIER Nilambur Sub-District. All Rights Reserved.</p>
+            <p>Venue: Amal College of Advanced Studies, Myladi, Nilambur</p>
+          </div>
+          <DeveloperFooter />
         </div>
       </footer>
     </div>
