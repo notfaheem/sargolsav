@@ -15,58 +15,59 @@ Designed to operate seamlessly on congested venue mobile networks, this portal f
 
 ---
 
-## 🚀 Features Delivered (Phase 1, Phase 2 & Phase 3)
+## 🚀 Features Delivered (Phase 1, Phase 2, Phase 3 & Phase 4)
 
-### 📊 1. Digital Consolidated Score Sheet & Tabulation Engine (Phase 3)
-- **Official PDF-Equivalent Digital Score Sheet:**
-  - Category selector (`KIDS`, `CHILDREN`, `SUB JUNIOR`, `JUNIOR`, `TEENS`) and item selector with live `Published` / `Pending` status indicators.
-  - Official header banner matching festival tabulation sheets: **Item Code**, **Item Names (Malayalam & English)**, **Category**, **Mode**, and **Total Entries**.
-  - Keyboard-friendly data entry table with columns for `Sl No`, `Chest No`, `Reg No`, `Participant & Unit`, `Judge 1` (0-100), `Judge 2` (0-100), `Judge 3` (0-100), `Total` (out of 300), `%`, `Grade`, `Rank`, and `Points`.
-  - **Late Entry Integration:** Quick `+ Add Late Entry` button to enroll participants by `reg_no` directly from the scoresheet.
-- **Official Sargolsav 2026 Calculation Math Engine:**
-  - **Absentee Handling:** If all 3 judges are blank or 0 $\rightarrow$ marked absent, null scores, 0 points.
-  - **Percentage & Grades (out of 300):**
-    - `percentage = (total_score / 300) * 100`
-    - Grade A: $\ge 75\%$ (Total $\ge 225$) $\rightarrow$ **5 Grade Points**
-    - Grade B: $\ge 60\%$ and $< 75\%$ (Total $180 - 224.99$) $\rightarrow$ **3 Grade Points**
-    - Grade C: $\ge 50\%$ and $< 60\%$ (Total $150 - 179.99$) $\rightarrow$ **1 Grade Point**
-    - Below $50\%$: No Grade $\rightarrow$ **0 Grade Points**
-  - **Dense Ranking for Ties:**
-    - Distinct 1st score $\rightarrow$ **Rank 1 (+5 Rank Points)** (shared ties both receive Rank 1).
-    - Distinct 2nd score $\rightarrow$ **Rank 2 (+3 Rank Points)**.
-    - Distinct 3rd score $\rightarrow$ **Rank 3 (+1 Rank Point)**.
-  - **Total Points:** `Points = Grade Points + Rank Points` (e.g. 1st + A = 10 pts, 2nd + A = 8 pts, A with no rank = 5 pts).
-  - **Page 2, Rule 12 Enforcement:** If `enforce_min_entry_rule` is enabled and fewer than 2 participants compete, awards Grade only with 0 total points.
-- **Draft Saving & Live Publishing Flow:**
-  - **"💾 Save Draft Scores":** Commits scores to `participations` without making results public.
-  - **"👁️ Preview & Publish Result" Modal:** Spotlight preview of Rank 1, 2, and 3 winners.
-  - **Appeal / Manual Override Controls:** Allows officials to manually adjust Grade, Rank, or Points in case of official appeal decisions or judge tie-breaks.
-  - **"🚀 Confirm & Publish Live":** Atomically saves scores and updates `items.is_published = true`.
-  - **"Unpublish Result":** Allows retracting live results back to draft if adjustments are required.
+### 🏆 1. Public Item Result View & Tied-Winner Cards (Phase 4)
+- **Strict Public Data Privacy:** Public views strictly omit `judge1`, `judge2`, `judge3`, `total_score`, `percentage`, and `chest_no`. Only verified Rank, Grade, Points, Name, Reg No, and Unit are displayed.
+- **Published Item Modal:**
+  - Header showing Item Code badge, Category badge, Mode badge (`SINGLE`/`GROUP`), bold Malayalam name, and English name.
+  - **Top Winners Highlight Cards (Section A):**
+    - **1st Place:** Gold card (`bg-amber-50 border-amber-300 text-amber-900`) with Trophy icon and "FIRST PLACE" banner.
+    - **2nd Place:** Silver card (`bg-slate-50 border-slate-300 text-slate-800`) with Medal icon and "SECOND PLACE" banner.
+    - **3rd Place:** Bronze card (`bg-orange-50 border-orange-300 text-orange-900`) with Medal icon and "THIRD PLACE" banner.
+    - **Graceful Tie & Missing Rank Support:** Multiple tied winners automatically render in the grid without layout shifts. Items with only 1st place cleanly render without empty placeholder boxes.
+    - Each winner card displays participant name, unit name, reg no, grade badge (`Grade A/B/C`), and earned points (`+10 pts`).
+  - **Official Consolidated Result Table (Section B):**
+    - Displays all ranked and graded contenders (`grade IS NOT NULL OR rank IS NOT NULL`), sorted by rank (1, 2, 3), then unranked graded (A, B, C), then reg no.
+    - Columns: `SL NO`, `REG NO`, `NAME`, `UNIT`, `GRADE`, `RANK`, and `POINTS`.
+  - **Share & Print Result:**
+    - Clean printer stylesheet (`window.print()`) formatted for official printouts and PDF generation.
+    - Native mobile share / WhatsApp summary copy link.
+- **Friendly Awaiting Notice:** If a user clicks an item where `is_published === false`, a clean status notice informs: *"Result not announced yet. Tabulation in progress!"*.
 
-### 🗑️ 2. "Delete All Participants" Safe Reset (Phase 3)
-- Located in the **Participants (Bulk Import)** tab header.
-- Guarded by a strict two-step confirmation modal requiring typing **DELETE**.
-- Cleans `participations` and `participants` tables, resets all 71 items to `is_published = false, published_at = null`, logs `[CLEAR_ALL_DATA]` to the diagnostics console, and refreshes directory counters.
+### 🔍 2. Instant Global Search (Student & Unit Lookup) (Phase 4)
+- Top global search bar wired for instant queries without page reloads.
+- **Student / Reg No Search:**
+  - Search by Registration No (e.g. `10252`) or Participant Name (e.g. `DIYA FATHIMA`).
+  - Displays **Student Profile Card** with Reg No, Name, Category, Unit, Madrasa, and **Total Individual Points Earned So Far**.
+  - Lists all registered items with published results (Rank, Grade, Points) or an `"Awaiting Result"` badge.
+  - 1-click chip navigation to open any published item's full result sheet.
+- **Unit Search:**
+  - Search by Unit name (e.g. `AKAMBADAM`, `MYLADI`).
+  - Displays **Unit Summary Card** with Total Unit Points, Awardee count, and registered contenders.
+- **1-Click "✕ Clear Search":** Instantly returns to the category browsing grid.
 
-### 🎨 3. Official Festival Logo & Identity (Phase 2)
-- High-resolution official **Sargothsav 2026 artwork** integrated into `public/logo.png` and configured as the browser favicon.
-- **Public Header (`/`):** Features the official festival logo alongside the festival title and MSM-CIER badges.
-- **Admin Header (`/admin`):** Logo is encased in a clean white rounded pill container (`bg-white p-1 rounded-xl shadow-xs`) on top of the deep navy `#1B254B` header to ensure artwork colours pop vibrantly.
-- **Admin PIN Gate:** Unlocking screen showcases the official festival logo.
+### 🔥 3. Recently Published Results Ticker Strip (Phase 4)
+- Renders a horizontal scrollable strip of recently published items ordered by publication timestamp.
+- Allows festival attendees to open the latest published results on the first click.
 
-### 🧑‍💼 4. Bulk Participant Importer & Directory (Phase 2)
-- Official MSM CSV & clipboard table paste importer supporting single/group item extraction.
-- Single participant add/edit modal with category item selectors.
-- Searchable participant directory with filters by category and unit.
+### 📊 4. Digital Consolidated Score Sheet & Tabulation Engine (Phase 3)
+- Official PDF-equivalent tabulation sheet with category & item selectors, publish status filters, and late entry additions.
+- Dense ranking engine for ties (1st = +5 pts, 2nd = +3 pts, 3rd = +1 pt, Grade A = 5 pts, Grade B = 3 pts, Grade C = 1 pt).
+- Single entry rule (Page 2, Rule 12) checking.
+- Save draft scores, result verification preview modal with appeal/judge manual override controls, and 1-click live publish/unpublish.
 
-### 🖥️ 5. Admin Diagnostics & Activity Console (Phase 2)
-- Live terminal audit trail in `/admin -> Settings` tab.
-- Supabase DB ping and latency measurement in milliseconds.
-- Copy logs to clipboard and clear console utilities.
+### 🗑️ 5. "Delete All Participants" Safe Reset (Phase 3)
+- Two-step confirmation modal requiring typing `DELETE` to clear test data and reset items to unpublished.
 
-### 🌐 6. Public Portal (`/`) (Phase 1)
-- Broadcast announcement banner, 5 category filter pills, item cards grid, and public privacy protections.
+### 🎨 6. Official Festival Logo & Identity (Phase 2)
+- Official Sargothsav 2026 artwork in public header, admin header white pill container, and browser favicon.
+
+### 🧑‍💼 7. Bulk Participant Importer & Directory (Phase 2)
+- Official MSM CSV & table paste importer with score-safe re-imports, single participant modal, and filtered directory.
+
+### 🖥️ 8. Admin Diagnostics & Activity Console (Phase 2)
+- Real-time audit trail, database latency ping test, and log clipboard utilities.
 
 ---
 

@@ -4,13 +4,19 @@ import AnnouncementBar from '../components/AnnouncementBar';
 import Header from '../components/Header';
 import CategorySelector, { CATEGORIES } from '../components/CategorySelector';
 import ItemCard from '../components/ItemCard';
+import RecentResultsStrip from '../components/RecentResultsStrip';
+import PublicResultModal from '../components/PublicResultModal';
+import GlobalSearchPanel from '../components/GlobalSearchPanel';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers } from 'lucide-react';
 
 export default function PublicPortal() {
   const [activeTab, setActiveTab] = useState('results');
   const [selectedCategory, setSelectedCategory] = useState('KIDS');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  // Selected item for Result View Modal (published result or awaiting notice)
+  const [selectedModalItem, setSelectedModalItem] = useState(null);
+
   // Public settings state (strictly only announcement_text and show_announcement)
   const [settings, setSettings] = useState({
     announcement_text: '',
@@ -75,6 +81,11 @@ export default function PublicPortal() {
     fetchItems();
   }, [fetchItems]);
 
+  // Published items list
+  const publishedItems = useMemo(() => {
+    return items.filter((i) => i.is_published);
+  }, [items]);
+
   // Category counts
   const categoryCounts = useMemo(() => {
     const counts = {};
@@ -94,23 +105,10 @@ export default function PublicPortal() {
     setSelectedCategory(categoryId);
   };
 
-  // Filter items for selected category and search
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      // Category match
-      const matchesCategory = item.category === selectedCategory;
-      if (!matchesCategory) return false;
-
-      // Search match
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase().trim();
-      const codeStr = String(item.code);
-      const nameEn = (item.name_en || '').toLowerCase();
-      const nameMl = (item.name_ml || '').toLowerCase();
-
-      return codeStr.includes(q) || nameEn.includes(q) || nameMl.includes(q);
-    });
-  }, [items, selectedCategory, searchQuery]);
+  // Filter items for selected category when no global search is active
+  const filteredCategoryItems = useMemo(() => {
+    return items.filter((item) => item.category === selectedCategory);
+  }, [items, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -128,7 +126,7 @@ export default function PublicPortal() {
         {/* Results Tab */}
         {activeTab === 'results' && (
           <div className="space-y-6">
-            {/* Global Search Bar (UI ready for Phase 4 wiring) */}
+            {/* Global Search Bar */}
             <div className="relative max-w-2xl mx-auto">
               <div className="relative flex items-center">
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
@@ -143,106 +141,123 @@ export default function PublicPortal() {
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                    className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
                     title="Clear search"
                   >
                     ×
                   </button>
                 )}
               </div>
-              <p className="mt-1.5 text-[11px] text-center text-slate-400 font-medium">
-                Tip: Search items, codes, or browse categories below. Participant lookup will activate in Phase 4.
-              </p>
-            </div>
-
-            {/* Category Selector Pills */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-slate-500" />
-                  <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-600">
-                    Categories
-                  </span>
-                </div>
-                <span className="text-xs font-semibold text-slate-500">
-                  {categoryCounts[selectedCategory] || 0} Items in {selectedCategory}
-                </span>
-              </div>
-
-              <CategorySelector
-                selectedCategory={selectedCategory}
-                onSelectCategory={handleSelectCategory}
-                itemCounts={categoryCounts}
-              />
-            </div>
-
-            {/* Error state */}
-            {itemsError && (
-              <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                  <p className="text-sm font-medium">{itemsError}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={fetchItems}
-                  className="px-3 py-1.5 text-xs font-semibold bg-white border border-red-300 rounded-lg text-red-700 hover:bg-red-100 flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {/* Items Grid */}
-            {isLoadingItems ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                {[...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs animate-pulse space-y-4"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="h-6 w-14 bg-slate-200 rounded-lg"></div>
-                      <div className="h-5 w-16 bg-slate-100 rounded-md"></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-6 bg-slate-200 rounded-md w-3/4"></div>
-                      <div className="h-4 bg-slate-100 rounded-md w-1/2"></div>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                      <div className="h-5 w-24 bg-slate-100 rounded-full"></div>
-                      <div className="h-4 w-12 bg-slate-100 rounded"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                  <Search className="w-6 h-6" />
-                </div>
-                <h4 className="text-base font-bold text-[#1B254B]">No items found</h4>
-                <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
-                  {searchQuery
-                    ? `No items match "${searchQuery}" in category ${selectedCategory}. Try another search term.`
-                    : `No items found for the ${selectedCategory} category.`}
+              {!searchQuery && (
+                <p className="mt-1.5 text-[11px] text-center text-slate-400 font-medium">
+                  Instant search: Type a student Reg No, name, or unit to view individual points & result sheets.
                 </p>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="inline-flex items-center px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-[#1B254B] hover:bg-slate-200"
-                  >
-                    Clear Search
-                  </button>
-                )}
-              </div>
+              )}
+            </div>
+
+            {/* Instant Global Search View OR Standard Category/Item Browser */}
+            {searchQuery.trim() ? (
+              /* Global Search Active */
+              <GlobalSearchPanel
+                query={searchQuery}
+                onClear={() => setSearchQuery('')}
+                allItems={items}
+                onOpenItemResult={(item) => setSelectedModalItem(item)}
+              />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                {filteredItems.map((item) => (
-                  <ItemCard key={item.code} item={item} />
-                ))}
+              /* Standard Category & Item Browser */
+              <div className="space-y-6">
+                {/* 🔥 Recently Published Results Ticker / Strip */}
+                {publishedItems.length > 0 && (
+                  <RecentResultsStrip
+                    publishedItems={publishedItems}
+                    onSelectItem={(item) => setSelectedModalItem(item)}
+                  />
+                )}
+
+                {/* Category Selector Pills */}
+                <div className="pt-1">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-slate-500" />
+                      <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-600">
+                        Categories
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {categoryCounts[selectedCategory] || 0} Items in {selectedCategory}
+                    </span>
+                  </div>
+
+                  <CategorySelector
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={handleSelectCategory}
+                    itemCounts={categoryCounts}
+                  />
+                </div>
+
+                {/* Error state */}
+                {itemsError && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                      <p className="text-sm font-medium">{itemsError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchItems}
+                      className="px-3 py-1.5 text-xs font-semibold bg-white border border-red-300 rounded-lg text-red-700 hover:bg-red-100 flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {/* Items Grid */}
+                {isLoadingItems ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                    {[...Array(6)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs animate-pulse space-y-4"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="h-6 w-14 bg-slate-200 rounded-lg"></div>
+                          <div className="h-5 w-16 bg-slate-100 rounded-md"></div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="h-6 bg-slate-200 rounded-md w-3/4"></div>
+                          <div className="h-4 bg-slate-100 rounded-md w-1/2"></div>
+                        </div>
+                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                          <div className="h-5 w-24 bg-slate-100 rounded-full"></div>
+                          <div className="h-4 w-12 bg-slate-100 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredCategoryItems.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                      <Search className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-base font-bold text-[#1B254B]">No items found</h4>
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+                      No items registered in the {selectedCategory} category yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                    {filteredCategoryItems.map((item) => (
+                      <ItemCard
+                        key={item.code}
+                        item={item}
+                        onClick={(clickedItem) => setSelectedModalItem(clickedItem)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -297,8 +312,17 @@ export default function PublicPortal() {
         )}
       </main>
 
+      {/* Public Item Result View Modal */}
+      {selectedModalItem && (
+        <PublicResultModal
+          item={selectedModalItem}
+          isOpen={Boolean(selectedModalItem)}
+          onClose={() => setSelectedModalItem(null)}
+        />
+      )}
+
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-6 px-4 text-center">
+      <footer className="mt-auto border-t border-slate-200 bg-white py-6 px-4 text-center print:hidden">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
           <p>© 2026 MSM-CIER Nilambur Sub-District. All Rights Reserved.</p>
           <p>Venue: Amal College of Advanced Studies, Myladi, Nilambur</p>
