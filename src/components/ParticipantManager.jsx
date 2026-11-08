@@ -52,6 +52,11 @@ export default function ParticipantManager({ onShowToast }) {
   const [deletingParticipant, setDeletingParticipant] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Clear all data confirmation modal state
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState('');
+  const [isClearingAll, setIsClearingAll] = useState(false);
+
   // Fetch initial data: participants, participations, and items
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -332,6 +337,60 @@ export default function ParticipantManager({ onShowToast }) {
     }
   };
 
+  // Clear All Participants, Enrollments, and Reset Item Published States
+  const handleClearAllData = async () => {
+    if (clearConfirmText.trim() !== 'DELETE' || isClearingAll) return;
+    setIsClearingAll(true);
+
+    try {
+      // 1. Delete all rows from participations
+      const { error: ptError } = await supabase
+        .from('participations')
+        .delete()
+        .neq('id', 0);
+      if (ptError) throw ptError;
+
+      // 2. Delete all rows from participants
+      const { error: pError } = await supabase
+        .from('participants')
+        .delete()
+        .neq('reg_no', '');
+      if (pError) throw pError;
+
+      // 3. Reset all items to unpublished
+      const { error: itemError } = await supabase
+        .from('items')
+        .update({ is_published: false, published_at: null })
+        .neq('code', 0);
+      if (itemError) throw itemError;
+
+      // 4. Log to System Diagnostics Console
+      logger.warn(
+        'CLEAR_ALL_DATA',
+        'Permanently cleared all participants, item enrollments, scores, and reset all 71 items to unpublished'
+      );
+
+      if (onShowToast) {
+        onShowToast(
+          'All participant data, scores, and item publication states have been completely reset.',
+          'success'
+        );
+      }
+
+      setShowClearAllModal(false);
+      setClearConfirmText('');
+      await fetchData();
+    } catch (err) {
+      console.error('Error clearing all data:', err);
+      logger.error('CLEAR_ALL_DATA', `Reset failed: ${err.message}`);
+      if (onShowToast) {
+        onShowToast(`Clear all data failed: ${err.message}`, 'error');
+      }
+    } finally {
+      setIsClearingAll(false);
+    }
+  };
+
   // Filtered participants list
   const filteredParticipants = useMemo(() => {
     return participants.filter((p) => {
@@ -450,6 +509,19 @@ export default function ParticipantManager({ onShowToast }) {
           >
             <UserPlus className="w-4 h-4" />
             <span>+ Add Single Participant</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setClearConfirmText('');
+              setShowClearAllModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all shadow-xs cursor-pointer"
+            title="Clear all test data"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Delete All Participants</span>
           </button>
         </div>
 
@@ -900,6 +972,72 @@ export default function ParticipantManager({ onShowToast }) {
               >
                 {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 <span>Delete Participant</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Clear All Data Confirmation Dialog */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-red-200 shadow-2xl max-w-md w-full p-6 text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+              <Trash2 className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-red-900">
+                Delete All Participants & Clear Test Data?
+              </h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                This will permanently delete all participants, all item enrollments/scores, and reset all 71 items to &apos;Unpublished&apos;.
+              </p>
+            </div>
+
+            <div className="bg-red-50/60 border border-red-200/80 rounded-2xl p-4 text-left space-y-2">
+              <label htmlFor="delete-confirm-input" className="block text-xs font-bold text-red-900">
+                Type <span className="font-mono bg-red-200 px-1 py-0.5 rounded text-red-950">DELETE</span> below to confirm:
+              </label>
+              <input
+                id="delete-confirm-input"
+                type="text"
+                value={clearConfirmText}
+                onChange={(e) => setClearConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                autoFocus
+                className="w-full bg-white border border-red-300 rounded-xl px-3 py-2 text-center text-sm font-mono font-bold tracking-widest text-red-900 focus:outline-hidden focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowClearAllModal(false);
+                  setClearConfirmText('');
+                }}
+                disabled={isClearingAll}
+                className="px-4 py-2.5 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllData}
+                disabled={clearConfirmText.trim() !== 'DELETE' || isClearingAll}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                {isClearingAll ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Resetting Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm Clear All Data</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

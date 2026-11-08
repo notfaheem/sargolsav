@@ -11,45 +11,62 @@
 
 Designed to operate seamlessly on congested venue mobile networks, this portal features:
 - A high-speed **Public Item & Result Browser** for participants, units, and parents.
-- A secured **Stealth Committee Admin Portal** (`/admin`) for festival officials to adjust festival announcements, scoring rules, import contenders, and inspect live diagnostics.
+- A secured **Stealth Committee Admin Portal** (`/admin`) for festival officials to tabulate scores, verify results with appeal overrides, publish live, and manage contenders.
 
 ---
 
-## 🚀 Features Delivered (Phase 1 & Phase 2)
+## 🚀 Features Delivered (Phase 1, Phase 2 & Phase 3)
 
-### 🎨 1. Official Festival Logo & Identity (Phase 2)
+### 📊 1. Digital Consolidated Score Sheet & Tabulation Engine (Phase 3)
+- **Official PDF-Equivalent Digital Score Sheet:**
+  - Category selector (`KIDS`, `CHILDREN`, `SUB JUNIOR`, `JUNIOR`, `TEENS`) and item selector with live `Published` / `Pending` status indicators.
+  - Official header banner matching festival tabulation sheets: **Item Code**, **Item Names (Malayalam & English)**, **Category**, **Mode**, and **Total Entries**.
+  - Keyboard-friendly data entry table with columns for `Sl No`, `Chest No`, `Reg No`, `Participant & Unit`, `Judge 1` (0-100), `Judge 2` (0-100), `Judge 3` (0-100), `Total` (out of 300), `%`, `Grade`, `Rank`, and `Points`.
+  - **Late Entry Integration:** Quick `+ Add Late Entry` button to enroll participants by `reg_no` directly from the scoresheet.
+- **Official Sargolsav 2026 Calculation Math Engine:**
+  - **Absentee Handling:** If all 3 judges are blank or 0 $\rightarrow$ marked absent, null scores, 0 points.
+  - **Percentage & Grades (out of 300):**
+    - `percentage = (total_score / 300) * 100`
+    - Grade A: $\ge 75\%$ (Total $\ge 225$) $\rightarrow$ **5 Grade Points**
+    - Grade B: $\ge 60\%$ and $< 75\%$ (Total $180 - 224.99$) $\rightarrow$ **3 Grade Points**
+    - Grade C: $\ge 50\%$ and $< 60\%$ (Total $150 - 179.99$) $\rightarrow$ **1 Grade Point**
+    - Below $50\%$: No Grade $\rightarrow$ **0 Grade Points**
+  - **Dense Ranking for Ties:**
+    - Distinct 1st score $\rightarrow$ **Rank 1 (+5 Rank Points)** (shared ties both receive Rank 1).
+    - Distinct 2nd score $\rightarrow$ **Rank 2 (+3 Rank Points)**.
+    - Distinct 3rd score $\rightarrow$ **Rank 3 (+1 Rank Point)**.
+  - **Total Points:** `Points = Grade Points + Rank Points` (e.g. 1st + A = 10 pts, 2nd + A = 8 pts, A with no rank = 5 pts).
+  - **Page 2, Rule 12 Enforcement:** If `enforce_min_entry_rule` is enabled and fewer than 2 participants compete, awards Grade only with 0 total points.
+- **Draft Saving & Live Publishing Flow:**
+  - **"💾 Save Draft Scores":** Commits scores to `participations` without making results public.
+  - **"👁️ Preview & Publish Result" Modal:** Spotlight preview of Rank 1, 2, and 3 winners.
+  - **Appeal / Manual Override Controls:** Allows officials to manually adjust Grade, Rank, or Points in case of official appeal decisions or judge tie-breaks.
+  - **"🚀 Confirm & Publish Live":** Atomically saves scores and updates `items.is_published = true`.
+  - **"Unpublish Result":** Allows retracting live results back to draft if adjustments are required.
+
+### 🗑️ 2. "Delete All Participants" Safe Reset (Phase 3)
+- Located in the **Participants (Bulk Import)** tab header.
+- Guarded by a strict two-step confirmation modal requiring typing **DELETE**.
+- Cleans `participations` and `participants` tables, resets all 71 items to `is_published = false, published_at = null`, logs `[CLEAR_ALL_DATA]` to the diagnostics console, and refreshes directory counters.
+
+### 🎨 3. Official Festival Logo & Identity (Phase 2)
 - High-resolution official **Sargothsav 2026 artwork** integrated into `public/logo.png` and configured as the browser favicon.
 - **Public Header (`/`):** Features the official festival logo alongside the festival title and MSM-CIER badges.
 - **Admin Header (`/admin`):** Logo is encased in a clean white rounded pill container (`bg-white p-1 rounded-xl shadow-xs`) on top of the deep navy `#1B254B` header to ensure artwork colours pop vibrantly.
 - **Admin PIN Gate:** Unlocking screen showcases the official festival logo.
 
-### 🧑‍💼 2. Bulk Participant Importer & Directory (Phase 2)
-- **Official MSM CSV & Table Paste Importer (Mode A):**
-  - **CSV File Upload:** Drag-and-drop or select official CSV files exported from the MSM portal.
-  - **Raw Text / Clipboard Paste:** Directly paste copied table rows (supports tab-separated values from website tables and comma-separated rows).
-  - **Flexible Parsing Engine:** Extracts `reg_no`, `name`, `category` (normalized to `KIDS`, `CHILDREN`, `SUB JUNIOR`, `JUNIOR`, `TEENS`), `district`, `zone`, `unit`, `madrasa`, and parses comma-separated lists of `Single` and `Group` item codes.
-  - **Pre-Import Data Validation:** Displays detected counts, flags unmapped or missing item codes, and renders a live preview table.
-  - **Score-Safe Upserts:** Executes bulk upsert into `participants` table (`onConflict: 'reg_no'`) and `participations` table (`onConflict: 'item_code,reg_no', ignoreDuplicates: true`), guaranteeing existing judge scores are **never overwritten** upon re-import.
-- **Single Participant Add / Edit Modal (Mode B):**
-  - Instant manual registration or update of `reg_no`, `name`, `category`, `unit`, `madrasa`.
-  - Dynamic multi-select checkboxes displaying items belonging to the selected category.
-- **Searchable Participant Directory:**
-  - Real-time summary stat cards: **Total Participants**, **Total Units**, and **Total Item Enrollments**.
-  - Multi-parameter search bar (`reg_no`, `name`, or `unit`).
-  - Filtering by **Category** and **Unit**.
-  - Interactive table showing registration badges, unit, enrolled item badges, and **Edit** / **Delete** controls (with confirmation safety dialogs).
+### 🧑‍💼 4. Bulk Participant Importer & Directory (Phase 2)
+- Official MSM CSV & clipboard table paste importer supporting single/group item extraction.
+- Single participant add/edit modal with category item selectors.
+- Searchable participant directory with filters by category and unit.
 
-### 🖥️ 3. Admin Diagnostics & Activity Console (Phase 2)
-- **Live Terminal-Style Console:** Embedded inside `/admin -> Settings` tab.
-- **Supabase DB Ping & Latency Tester:** Real-time roundtrip latency check in milliseconds (e.g. `Connected - 78ms`) querying `settings` and `items` count.
-- **Client-Side Audit Trail:** Records operations into `sessionStorage` (up to 50 logs) with color-coded status badges (`SUCCESS` green, `WARNING` yellow, `ERROR` red), action tags, timestamps, and messages.
-- **Console Utilities:** One-click **"Copy Logs"** to clipboard and **"Clear Console"** buttons.
+### 🖥️ 5. Admin Diagnostics & Activity Console (Phase 2)
+- Live terminal audit trail in `/admin -> Settings` tab.
+- Supabase DB ping and latency measurement in milliseconds.
+- Copy logs to clipboard and clear console utilities.
 
-### 🌐 4. Public Portal (`/`) (Phase 1)
-- **Broadcast Announcement Bar:** Dynamic banner with megaphone icon controlled via committee settings.
-- **Category Filter Pills:** Instant 1-click filtering across `KIDS` (`#F26430`), `CHILDREN` (`#16A34A`), `SUB JUNIOR` (`#2563EB`), `JUNIOR` (`#7C3AED`), and `TEENS` (`#0D9488`).
-- **Item Cards Grid:** Malayalam name (`Noto Sans Malayalam`), English name (`Plus Jakarta Sans`), item code badge, mode tag (`SINGLE`/`GROUP`), and live status (`Result Published` / `Awaiting Result`).
-- **Data Privacy:** Public queries strictly omit judge scores, percentages, and admin credentials.
+### 🌐 6. Public Portal (`/`) (Phase 1)
+- Broadcast announcement banner, 5 category filter pills, item cards grid, and public privacy protections.
 
 ---
 
@@ -90,11 +107,3 @@ Open your browser at:
 ```bash
 npm run build
 ```
-
----
-
-## 📋 Security & Anti-Bug Architecture
-- **Zero Double-Click Bugs:** Category pill filters and save mutations pass target values directly into handlers without relying on stale React closures.
-- **Button Locking:** Every mutation locks the trigger button in an `isSubmitting` state with an animated spinner until the database write finishes.
-- **Safe Re-Imports:** Bulk enrollments utilize `onConflict: 'item_code,reg_no', ignoreDuplicates: true` ensuring existing scores/grades are preserved.
-- **Public Data Privacy:** Public views never request sensitive scoring fields (`judge1`, `judge2`, `judge3`, `total_score`, `percentage`, `admin_pin`).
