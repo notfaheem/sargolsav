@@ -23,6 +23,8 @@ import {
   Trophy,
 } from 'lucide-react';
 import ChampionshipsTab from '../components/ChampionshipsTab';
+import LiveAnalyticsBanner from '../components/LiveAnalyticsBanner';
+import AdminResourceManager from '../components/AdminResourceManager';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
 
@@ -383,6 +385,11 @@ export default function AdminPortal() {
         {/* Settings Tab - Fully Functional with System Diagnostics Console */}
         {activeTab === 'settings' && (
           <div className="max-w-4xl mx-auto space-y-8">
+            {/* Live Traffic & Analytics Banner */}
+            <LiveAnalyticsBanner
+              onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
+            />
+
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
               <div className="flex items-center justify-between pb-6 border-b border-slate-100">
                 <div>
@@ -575,28 +582,11 @@ export default function AdminPortal() {
         {/* Championships & Standings Tab */}
         {activeTab === 'championships' && <ChampionshipsTab />}
 
-        {/* Resources Tab (Placeholder for Phase 6) */}
+        {/* Resources Tab */}
         {activeTab === 'resources' && (
-          <div className="max-w-2xl mx-auto py-12 px-4 text-center space-y-4 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 text-[#0D9488] border border-teal-200 flex items-center justify-center shadow-xs">
-              <FolderArchive className="w-8 h-8" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B254B]">
-              Resource & Document Management
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Upload PDF program books, rules manuals, mark sheets, and venue instructions directly to Supabase storage in Phase 6.
-            </p>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('settings')}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-[#1B254B] hover:bg-slate-200"
-              >
-                Go to Settings
-              </button>
-            </div>
-          </div>
+          <AdminResourceManager
+            onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
+          />
         )}
       </main>
     </div>

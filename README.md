@@ -15,9 +15,29 @@ Designed to operate seamlessly on congested venue mobile networks, this portal f
 
 ---
 
-## 🚀 Features Delivered (Phase 1, Phase 2, Phase 3, Phase 4 & Phase 5)
+## 🚀 Features Delivered (Phases 1 through 6 - Complete)
 
-### 🏆 1. Live Championships, Podiums & Kalaprathibha Engine (Phase 5)
+### 📈 1. Live & Total Traffic Analytics (Phase 6)
+- **🟢 Live Viewers Right Now:** Connected to Supabase Presence channel (`'online-visitors'`). Syncs real-time count of active public website visitors with a live pulsing indicator.
+- **👁️ Total Website Views:** Session-deduplicated pageview counter storing cumulative views in `settings.total_views`, complete with `"🔄 Refresh"` and `"Reset Counter"` controls in Admin Settings.
+
+### 📁 2. Festival Resources Manager & Public Viewer (Phase 6)
+- **Admin Document Manager (`/admin` -> Resources Tab):**
+  - **Direct File Upload:** Upload PDF manuals, stage schedules, or venue maps directly to Supabase Storage (`resources` bucket).
+  - **External Link Fallback:** Paste direct Google Drive or web URLs.
+  - Delete controls with instant logging to the System Diagnostics Console.
+- **Public Document Viewer (`/` -> Resources Tab):**
+  - Clean card directory with document icons and type badges (`PDF DOCUMENT` / `IMAGE / MAP`).
+  - **"👁️ Preview Inline" Modal:** In-app iframe/image viewer to read documents without leaving the portal.
+  - **"📥 Download / Open" Button:** One-click download or open in new tab.
+
+### 🛡️ 3. Guaranteed Supabase Fallback Credentials (Phase 6)
+- Hardcoded fallback credentials inside `src/lib/supabase.js` ensuring the portal will never throw `Invalid supabaseUrl` on Vercel even if environment variables are unset.
+
+### 📱 4. Mobile UX: Unpinned Main Branding Header (Phase 6)
+- Released `sticky` constraint on the large festival banner so it scrolls away naturally, maximizing screen area for result tables and podiums while keeping only the compact 3-tab navigation bar accessible.
+
+### 🏆 5. Live Championships, Podiums & Kalaprathibha Engine (Phase 5)
 - **Interactive 3-Step Olympic Podium (`<Podium />`):**
   - Real 3-step podium with Gold (Center, tallest, Crown & Trophy), Silver (Left, Medal), and Bronze (Right, Medal) steps.
   - Full support for ties on any step without layout breaking.

@@ -8,6 +8,7 @@ import RecentResultsStrip from '../components/RecentResultsStrip';
 import PublicResultModal from '../components/PublicResultModal';
 import GlobalSearchPanel from '../components/GlobalSearchPanel';
 import ChampionshipsTab from '../components/ChampionshipsTab';
+import PublicResourcesTab from '../components/PublicResourcesTab';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers } from 'lucide-react';
 
 export default function PublicPortal() {
@@ -56,6 +57,49 @@ export default function PublicPortal() {
     }
 
     fetchPublicSettings();
+  }, []);
+
+  // Track Public Visits (Total Views & Live Presence)
+  useEffect(() => {
+    // 1. Total Views Increment once per browser session
+    const hasViewed = sessionStorage.getItem('sargolsav_viewed');
+    if (!hasViewed) {
+      async function trackTotalView() {
+        try {
+          // Attempt RPC first
+          const { error: rpcErr } = await supabase.rpc('increment_total_views');
+          if (rpcErr) {
+            // Fallback: direct read & increment on settings
+            const { data: sData } = await supabase
+              .from('settings')
+              .select('total_views')
+              .eq('id', 1)
+              .single();
+            const currentViews = Number(sData?.total_views) || 0;
+            await supabase
+              .from('settings')
+              .update({ total_views: currentViews + 1 })
+              .eq('id', 1);
+          }
+          sessionStorage.setItem('sargolsav_viewed', '1');
+        } catch (e) {
+          console.warn('View tracking notice:', e);
+        }
+      }
+      trackTotalView();
+    }
+
+    // 2. Realtime Presence for Live Visitors
+    const channel = supabase.channel('online-visitors');
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.track({ online_at: new Date().toISOString() });
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Fetch items - strictly public columns, sorted by code
@@ -267,29 +311,8 @@ export default function PublicPortal() {
         {/* Championships & Podiums Tab */}
         {activeTab === 'championships' && <ChampionshipsTab />}
 
-        {/* Resources Tab (Placeholder for Phase 6) */}
-        {activeTab === 'resources' && (
-          <div className="max-w-2xl mx-auto py-12 px-4 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 text-[#0D9488] border border-teal-200 flex items-center justify-center shadow-xs">
-              <FolderArchive className="w-8 h-8" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B254B]">
-              Festival Resources & Guidelines
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Program schedule, rules manual, score sheet templates, and venue maps will be wired in Phase 6.
-            </p>
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => setActiveTab('results')}
-                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-[#1B254B] text-white hover:bg-navy-800 transition-colors shadow-xs"
-              >
-                ← Back to Results
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Resources Tab */}
+        {activeTab === 'resources' && <PublicResourcesTab />}
       </main>
 
       {/* Public Item Result View Modal */}
