@@ -59,6 +59,56 @@ export function normalizeCategory(cat) {
   return upper;
 }
 
+/**
+ * Auto-generates a clean default Unit short-name from a Madrasa string.
+ * Example:
+ * "MADRASATHU SUBHAN, AKAMBADAM" -> "AKAMBADAM"
+ * "SALAFI MADRASA MYLADI" -> "MYLADI"
+ * "MADRASA - ANAPPARA" -> "ANAPPARA"
+ */
+export function deriveDefaultUnitName(madrasaName) {
+  if (!madrasaName || !madrasaName.trim()) return 'UNASSIGNED';
+  const raw = madrasaName.trim().toUpperCase();
+
+  // If there's a comma (e.g. "MADRASATHU SUBHAN, AKAMBADAM"), take the part after the comma
+  if (raw.includes(',')) {
+    const parts = raw.split(',');
+    const afterComma = parts[parts.length - 1].trim();
+    if (afterComma.length > 0) {
+      const cleaned = cleanUnitString(afterComma);
+      if (cleaned !== 'UNASSIGNED') return cleaned;
+    }
+  }
+
+  // If there's a hyphen separator (e.g. "MADRASA - MYLADI")
+  if (raw.includes(' - ')) {
+    const parts = raw.split(' - ');
+    const afterDash = parts[parts.length - 1].trim();
+    if (afterDash.length > 0) {
+      const cleaned = cleanUnitString(afterDash);
+      if (cleaned !== 'UNASSIGNED') return cleaned;
+    }
+  }
+
+  return cleanUnitString(raw);
+}
+
+function cleanUnitString(str) {
+  let cleaned = str
+    .replace(/\bSALAFI\s+MADRASA\b/gi, '')
+    .replace(/\bSALAFI\b/gi, '')
+    .replace(/\bMADRASATHU\s+SUBHAN\b/gi, '')
+    .replace(/\bMADRASATHUL?\b/gi, '')
+    .replace(/\bMADRASA\b/gi, '')
+    .replace(/\bAL[-\s]MADRASA\b/gi, '')
+    .replace(/[^A-Z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+
+  return cleaned.length > 0 ? cleaned : 'UNASSIGNED';
+}
+
 export function parseParticipantData(rawText) {
   if (!rawText || !rawText.trim()) {
     return { participants: [], enrollments: [], errors: [] };

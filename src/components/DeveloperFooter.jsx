@@ -2,19 +2,27 @@ import React from 'react';
 
 export default function DeveloperFooter() {
   return (
-    <div className="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-      <div className="flex items-center gap-1.5 font-medium">
-        <span>Developed by</span>
-        <span className="font-bold text-[#1B254B] tracking-tight">Faheem P Faisal</span>
+    <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      {/* Organization & Developer Credits */}
+      <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2.5 text-center sm:text-left">
+        <span className="font-semibold text-slate-700">
+          © 2026 MSM Nilambur Zone • Sargolsav
+        </span>
+        <span className="hidden sm:inline text-slate-300">•</span>
+        <div className="flex items-center gap-1.5 font-medium">
+          <span>Developed by</span>
+          <span className="font-bold text-[#1B254B] tracking-tight">Faheem P Faisal</span>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Social & Contact Links */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {/* WhatsApp */}
         <a
           href="https://wa.me/918590683861"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/90 hover:border-emerald-300 transition-all shadow-2xs group"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200/90 hover:border-emerald-300 transition-all shadow-2xs group cursor-pointer"
           title="Chat on WhatsApp (+91 8590683861)"
         >
           <svg
@@ -32,7 +40,7 @@ export default function DeveloperFooter() {
           href="https://github.com/notfaheem"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 transition-all shadow-2xs group"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/90 hover:border-slate-300 transition-all shadow-2xs group cursor-pointer"
           title="Visit GitHub profile (@notfaheem)"
         >
           <svg
@@ -54,8 +62,8 @@ export default function DeveloperFooter() {
           href="https://www.linkedin.com/in/faheem-p7"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200/90 hover:border-blue-300 transition-all shadow-2xs group"
-          title="Connect on LinkedIn"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200/90 hover:border-blue-300 transition-all shadow-2xs group cursor-pointer"
+          title="Connect on LinkedIn (www.linkedin.com/in/faheem-p7)"
         >
           <svg
             className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors shrink-0"

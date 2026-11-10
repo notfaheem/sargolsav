@@ -17,7 +17,16 @@ Designed to operate seamlessly on congested venue mobile networks, this portal f
 
 ## 🚀 Features Delivered (Phases 1 through 6 - Complete)
 
-### 📈 1. Live & Total Traffic Analytics (Phase 6)
+### 🏫 1. Madrasa-to-Unit Mapping System (Manual Rule 19 Compliant)
+- **Automatic Default Unit Derivation:** Automatically normalizes source madrasa names into clean uppercase Unit short-names during CSV / copy-paste import (ignoring raw or blank CSV unit columns).
+- **Multiple Madrasas under Shared Units:** Directly complies with Sargolsav Manual Page 3 Rule 19: when a Unit has 2 Madrasas under it, both Madrasas compete separately and combine their points into one single Unit on the Championship leaderboards.
+- **Rule 19 Group Item Deduplication:** Group item deduplication key updated to `(item_code, madrasa || unit)`, allowing two separate Madrasas under the same Unit to both contribute their Group performance points while preventing duplicate student rows within the same Madrasa.
+- **Interactive Mapping Console (`/admin` -> Settings Tab & Participants Shortcut):**
+  - "Scan Madrasas from Participants" button to detect new institutions.
+  - Editable uppercase Unit short-name inputs with `"Shared Unit (X Madrasas)"` badges.
+  - One-click `"Save & Sync Units to All Participants"` syncing changes across `madrasa_unit_map` and the `participants` directory.
+
+### 📈 2. Live & Total Traffic Analytics (Phase 6)
 - **🟢 Live Viewers Right Now:** Connected to Supabase Presence channel (`'online-visitors'`). Syncs real-time count of active public website visitors with a live pulsing indicator.
 - **👁️ Total Website Views:** Session-deduplicated pageview counter storing cumulative views in `settings.total_views`, complete with `"🔄 Refresh"` and `"Reset Counter"` controls in Admin Settings.
 

@@ -326,13 +326,12 @@ export default function PublicPortal() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-6 px-4 print:hidden">
-        <div className="max-w-6xl mx-auto space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
-            <p>© 2026 MSM-CIER Nilambur Sub-District. All Rights Reserved.</p>
-            <p>Venue: Amal College of Advanced Studies, Myladi, Nilambur</p>
-          </div>
+      <footer className="mt-auto border-t border-slate-200 bg-white py-5 px-4 print:hidden">
+        <div className="max-w-6xl mx-auto space-y-3">
           <DeveloperFooter />
+          <p className="text-[11px] text-slate-400 text-center sm:text-left">
+            Venue: Amal College of Advanced Studies, Myladi, Nilambur
+          </p>
         </div>
       </footer>
     </div>

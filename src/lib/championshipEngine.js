@@ -48,23 +48,28 @@ export function computeUnitStandings(participations = [], participants = [], ite
   });
 
   // 3. Separate SINGLE vs GROUP participations to apply deduplication
-  // Group key: `${item_code}__${unit}`
-  const groupScoresMap = new Map(); // key -> { maxPoints, item, unit, entries: [] }
+  // Group key per Rule 19: `(item_code, madrasa || unit)`
+  // Allows two separate Madrasas under the same shared Unit to both contribute their group points,
+  // while deduplicating multi-student entries from the same Madrasa!
+  const groupScoresMap = new Map(); // key -> { maxPoints, item, unit, madrasa, entries: [] }
   const singleEntries = [];
 
   validParticipations.forEach((part) => {
     const item = itemMap.get(part.item_code);
     const student = participantMap.get(part.reg_no);
-    const unit = student?.unit || 'Independent';
+    const unit = (student?.unit || 'UNASSIGNED').trim().toUpperCase();
+    const madrasa = (student?.madrasa || '').trim();
 
     if (item.mode === 'GROUP') {
-      const key = `${item.code}__${unit}`;
+      const madrasaKey = madrasa || unit;
+      const key = `${item.code}__${madrasaKey}`;
       const pts = Number(part.points) || 0;
       if (!groupScoresMap.has(key)) {
         groupScoresMap.set(key, {
           itemCode: item.code,
           item,
           unit,
+          madrasa,
           maxPoints: pts,
           rank: part.rank,
           grade: part.grade,
@@ -84,19 +89,21 @@ export function computeUnitStandings(participations = [], participants = [], ite
         ...part,
         item,
         unit,
+        madrasa,
         studentName: student?.name || 'Unknown',
         points: Number(part.points) || 0,
       });
     }
   });
 
-  // 4. Aggregate points per unit
+  // 4. Aggregate points per unit (strictly grouping by normalized unit.trim().toUpperCase())
   const unitStatsMap = new Map();
 
   function getOrCreateUnit(unit) {
-    if (!unitStatsMap.has(unit)) {
-      unitStatsMap.set(unit, {
-        unit,
+    const normalized = (unit || 'UNASSIGNED').trim().toUpperCase();
+    if (!unitStatsMap.has(normalized)) {
+      unitStatsMap.set(normalized, {
+        unit: normalized,
         totalPoints: 0,
         rank1Count: 0,
         rank2Count: 0,
@@ -107,7 +114,7 @@ export function computeUnitStandings(participations = [], participants = [], ite
         breakdown: [], // detailed list of score contributors
       });
     }
-    return unitStatsMap.get(unit);
+    return unitStatsMap.get(normalized);
   }
 
   // A. Add single entries
@@ -130,6 +137,7 @@ export function computeUnitStandings(participations = [], participants = [], ite
         itemNameEn: entry.item.name_en,
         category: entry.item.category,
         studentName: entry.studentName,
+        madrasa: entry.madrasa,
         regNo: entry.reg_no,
         rank: entry.rank,
         grade: entry.grade,
@@ -138,7 +146,7 @@ export function computeUnitStandings(participations = [], participants = [], ite
     }
   });
 
-  // B. Add deduplicated group entries
+  // B. Add deduplicated group entries (aggregating under the shared Unit)
   groupScoresMap.forEach((grp) => {
     const u = getOrCreateUnit(grp.unit);
     u.totalPoints += grp.maxPoints;
@@ -157,7 +165,10 @@ export function computeUnitStandings(participations = [], participants = [], ite
         itemNameMl: grp.item.name_ml,
         itemNameEn: grp.item.name_en,
         category: grp.item.category,
-        studentName: `Team (${grp.entries.length} participants)`,
+        studentName: grp.madrasa
+          ? `${grp.madrasa} Team (${grp.entries.length} participants)`
+          : `Team (${grp.entries.length} participants)`,
+        madrasa: grp.madrasa,
         regNo: grp.entries.map((e) => `#${e.reg_no}`).join(', '),
         rank: grp.rank,
         grade: grp.grade,

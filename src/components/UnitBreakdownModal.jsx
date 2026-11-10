@@ -109,6 +109,9 @@ export default function UnitBreakdownModal({ unitData, isOpen, onClose }) {
                     <p className="text-xs text-slate-500 truncate mt-0.5">
                       <span className="font-semibold text-slate-700">{item.studentName}</span>
                       {item.regNo && <span className="font-mono text-slate-400 ml-1">({item.regNo})</span>}
+                      {item.madrasa && item.type === 'SINGLE' && (
+                        <span className="text-slate-400 ml-1">• {item.madrasa}</span>
+                      )}
                     </p>
                   </div>
 

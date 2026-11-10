@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
-import { parseParticipantData } from '../lib/parseParticipants';
+import { parseParticipantData, deriveDefaultUnitName } from '../lib/parseParticipants';
 import ParticipantModal from './ParticipantModal';
+import MadrasaUnitMapper from './MadrasaUnitMapper';
 import {
   Users,
   Building2,
@@ -56,6 +57,9 @@ export default function ParticipantManager({ onShowToast }) {
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState('');
   const [isClearingAll, setIsClearingAll] = useState(false);
+
+  // Madrasa to Unit Mapper modal state
+  const [showMadrasaMapperModal, setShowMadrasaMapperModal] = useState(false);
 
   // Fetch initial data: participants, participations, and items
   const fetchData = useCallback(async () => {
@@ -163,18 +167,69 @@ export default function ParticipantManager({ onShowToast }) {
     setImportProgress('Preparing database batch...');
 
     try {
-      const participantRows = parsedResult.participants.map((p) => ({
-        reg_no: p.reg_no,
-        name: p.name,
-        category: p.category,
-        district: p.district || 'MALAPPURAM',
-        zone: p.zone || 'NILAMBUR',
-        unit: p.unit || '',
-        madrasa: p.madrasa || '',
-      }));
+      // Step 0: Fetch existing mappings from madrasa_unit_map
+      setImportProgress('Fetching Madrasa to Unit mappings...');
+      const { data: existingMapRows, error: mapErr } = await supabase
+        .from('madrasa_unit_map')
+        .select('madrasa, unit');
+
+      if (mapErr) {
+        console.warn('Notice loading madrasa_unit_map:', mapErr);
+      }
+
+      const mappingMap = new Map();
+      (existingMapRows || []).forEach((row) => {
+        if (row.madrasa) {
+          mappingMap.set(row.madrasa.trim(), row.unit?.trim().toUpperCase() || 'UNASSIGNED');
+        }
+      });
+
+      // Normalize madrasa names, ignore raw CSV unit, resolve or auto-generate unit
+      const newMappingsToUpsert = new Map();
+      const participantRows = parsedResult.participants.map((p) => {
+        const cleanMadrasa = (p.madrasa || '').trim();
+        let assignedUnit = 'UNASSIGNED';
+
+        if (cleanMadrasa) {
+          if (mappingMap.has(cleanMadrasa)) {
+            assignedUnit = mappingMap.get(cleanMadrasa);
+          } else {
+            // Auto-generate clean default Unit short-name from madrasa
+            assignedUnit = deriveDefaultUnitName(cleanMadrasa);
+            mappingMap.set(cleanMadrasa, assignedUnit);
+            newMappingsToUpsert.set(cleanMadrasa, assignedUnit);
+          }
+        }
+
+        return {
+          reg_no: p.reg_no,
+          name: p.name,
+          category: p.category,
+          district: p.district || 'MALAPPURAM',
+          zone: p.zone || 'NILAMBUR',
+          unit: assignedUnit,
+          madrasa: cleanMadrasa,
+        };
+      });
+
+      // Upsert any newly auto-generated madrasa_unit_map pairs
+      if (newMappingsToUpsert.size > 0) {
+        setImportProgress(`Saving ${newMappingsToUpsert.size} newly discovered Madrasa mappings...`);
+        const mapRows = Array.from(newMappingsToUpsert.entries()).map(([madrasa, unit]) => ({
+          madrasa,
+          unit,
+        }));
+        const { error: upsertMapErr } = await supabase
+          .from('madrasa_unit_map')
+          .upsert(mapRows, { onConflict: 'madrasa' });
+
+        if (upsertMapErr) {
+          console.warn('Notice saving new madrasa mappings:', upsertMapErr);
+        }
+      }
 
       // Step 1: Bulk Upsert Participants
-      setImportProgress(`Upserting ${participantRows.length} participants...`);
+      setImportProgress(`Upserting ${participantRows.length} participants with unified units...`);
       const { error: pError } = await supabase
         .from('participants')
         .upsert(participantRows, { onConflict: 'reg_no' });
@@ -522,6 +577,16 @@ export default function ParticipantManager({ onShowToast }) {
           >
             <Trash2 className="w-4 h-4" />
             <span>Delete All Participants</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowMadrasaMapperModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-all shadow-xs cursor-pointer"
+            title="Open Madrasa to Unit Mapping Manager"
+          >
+            <Building2 className="w-4 h-4 text-purple-600" />
+            <span>🏫 Madrasa Unit Mapper</span>
           </button>
         </div>
 
@@ -1042,6 +1107,16 @@ export default function ParticipantManager({ onShowToast }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Madrasa to Unit Mapper Modal Shortcut */}
+      {showMadrasaMapperModal && (
+        <MadrasaUnitMapper
+          isModal={true}
+          onClose={() => setShowMadrasaMapperModal(false)}
+          onShowToast={onShowToast}
+          onSyncSuccess={fetchData}
+        />
       )}
     </div>
   );

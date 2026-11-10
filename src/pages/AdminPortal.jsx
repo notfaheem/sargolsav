@@ -25,6 +25,7 @@ import {
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import LiveAnalyticsBanner from '../components/LiveAnalyticsBanner';
 import AdminResourceManager from '../components/AdminResourceManager';
+import MadrasaUnitMapper from '../components/MadrasaUnitMapper';
 import DeveloperFooter from '../components/DeveloperFooter';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
@@ -560,6 +561,11 @@ export default function AdminPortal() {
                 </div>
               </form>
             </div>
+
+            {/* Madrasa to Unit Mapper Section */}
+            <MadrasaUnitMapper
+              onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
+            />
 
             {/* System Diagnostics & Activity Console Panel (Phase 2) */}
             <DiagnosticsConsole />
