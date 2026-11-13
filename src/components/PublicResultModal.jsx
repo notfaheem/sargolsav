@@ -291,7 +291,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                 Result Not Announced Yet
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                Tabulation and score verification are in progress for this item. Please check back shortly!
+                The results for this item have not been published yet. Please check back later!
               </p>
               <div className="pt-2">
                 <button
