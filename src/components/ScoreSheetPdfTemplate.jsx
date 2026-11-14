@@ -68,47 +68,67 @@ export default function ScoreSheetPdfTemplate({ containerId, item, rows = [] }) 
       </div>
 
       {/* 2. Metadata Block with Dotted Leader Lines */}
-      <div className="grid grid-cols-2 gap-x-10 gap-y-2 mb-4 text-xs font-sans">
+      <div className="grid grid-cols-2 gap-x-10 gap-y-3 mb-5 text-xs font-sans">
         {/* Left Column */}
-        <div className="space-y-2">
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">CATEGORY:</span>
-            <span className="font-semibold text-black uppercase pr-1.5">{item.category || '—'}</span>
+        <div className="space-y-3">
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              CATEGORY:
+            </span>
+            <span className="font-semibold text-black uppercase pr-2 leading-relaxed">
+              {item.category || '—'}
+            </span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
 
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">ITEM TYPE:</span>
-            <span className="font-semibold text-black uppercase pr-1.5">{itemType}</span>
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              ITEM TYPE:
+            </span>
+            <span className="font-semibold text-black uppercase pr-2 leading-relaxed">
+              {itemType}
+            </span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
 
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">ITEM MODE:</span>
-            <span className="font-semibold text-black uppercase pr-1.5">{itemMode}</span>
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              ITEM MODE:
+            </span>
+            <span className="font-semibold text-black uppercase pr-2 leading-relaxed">
+              {itemMode}
+            </span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
         </div>
 
         {/* Right Column */}
-        <div className="space-y-2">
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">ITEM CODE:</span>
-            <span className="font-semibold text-black font-mono pr-1.5">{item.code}</span>
+        <div className="space-y-3">
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              ITEM CODE:
+            </span>
+            <span className="font-semibold text-black font-mono pr-2 leading-relaxed">
+              {item.code}
+            </span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
 
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">ITEM NAME:</span>
-            <span className="font-semibold text-black uppercase font-ml pr-1.5 truncate max-w-[210px]">
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              ITEM NAME:
+            </span>
+            <span className="font-semibold text-black uppercase font-ml pr-2 leading-relaxed">
               {itemNameDisplay}
             </span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
 
-          <div className="flex items-baseline">
-            <span className="font-bold tracking-wide w-28 text-black shrink-0">STAGE:</span>
-            <span className="font-semibold text-black uppercase pr-1.5"></span>
+          <div className="flex items-end pb-1.5 min-h-[30px]">
+            <span className="font-bold tracking-wide w-28 text-black shrink-0 leading-relaxed">
+              STAGE:
+            </span>
+            <span className="font-semibold text-black uppercase pr-2 leading-relaxed"></span>
             <div className="flex-1 border-b border-dotted border-slate-500 mb-1" />
           </div>
         </div>

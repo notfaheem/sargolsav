@@ -33,6 +33,8 @@ export async function downloadResultPdf(containerId, itemCode) {
     logging: false,
     backgroundColor: '#ffffff',
     windowWidth: 800,
+    scrollX: 0,
+    scrollY: 0,
   });
 
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -97,6 +99,8 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
     logging: false,
     backgroundColor: '#ffffff',
     windowWidth: 800,
+    scrollX: 0,
+    scrollY: 0,
   });
 
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
