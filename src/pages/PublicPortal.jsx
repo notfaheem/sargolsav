@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AnnouncementBar from '../components/AnnouncementBar';
 import Header from '../components/Header';
@@ -334,6 +335,16 @@ export default function PublicPortal() {
           </p>
         </div>
       </footer>
+
+      {/* Floating Action Button: 🏆 Poster Maker */}
+      <Link
+        to="/poster"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-[#1B254B] text-white text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl hover:bg-[#F26430] hover:scale-105 active:scale-95 transition-all duration-200 border border-white/20 print:hidden cursor-pointer"
+        title="Open Winner Poster Maker Toolkit"
+      >
+        <span className="text-base sm:text-lg leading-none">🏆</span>
+        <span>Poster Maker</span>
+      </Link>
     </div>
   );
 }
