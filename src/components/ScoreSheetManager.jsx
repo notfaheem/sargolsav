@@ -23,9 +23,11 @@ import {
   RotateCcw,
   Sparkles,
   Download,
+  Printer,
 } from 'lucide-react';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
-import { downloadResultPdf } from '../lib/pdfGenerator';
+import ScoreSheetPdfTemplate from './ScoreSheetPdfTemplate';
+import { downloadResultPdf, downloadScoreSheetPdf } from '../lib/pdfGenerator';
 
 export default function ScoreSheetManager({ onShowToast }) {
   // Category & Item selection
@@ -44,6 +46,7 @@ export default function ScoreSheetManager({ onShowToast }) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isPrintingScoreSheet, setIsPrintingScoreSheet] = useState(false);
 
   // Preview & Publish Modal
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -480,6 +483,23 @@ export default function ScoreSheetManager({ onShowToast }) {
     }
   };
 
+  // Print Official Consolidated Score Sheet PDF Handler (Matching ITEM_207.pdf)
+  const handlePrintScoreSheet = async () => {
+    if (isPrintingScoreSheet || !currentItem) return;
+    setIsPrintingScoreSheet(true);
+    try {
+      await downloadScoreSheetPdf(`admin-scoresheet-pdf-${currentItem.code}`, currentItem.code);
+      logger.success('PRINT_SCORESHEET', `Consolidated score sheet downloaded for Item #${currentItem.code}`);
+      if (onShowToast) onShowToast('Consolidated Score Sheet PDF downloaded successfully!', 'success');
+    } catch (err) {
+      console.error('Error generating Score Sheet PDF:', err);
+      logger.error('PRINT_SCORESHEET_ERROR', err.message);
+      if (onShowToast) onShowToast(`Failed to generate Score Sheet PDF: ${err.message}`, 'error');
+    } finally {
+      setIsPrintingScoreSheet(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Category & Item Selector Bar */}
@@ -865,76 +885,99 @@ export default function ScoreSheetManager({ onShowToast }) {
           </div>
 
           {/* 4. Action Buttons Footer */}
-          {rows.length > 0 && (
-            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {currentItem.is_published && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleDownloadPdf}
-                      disabled={isDownloadingPdf}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
-                      title="Download Official Result PDF"
-                    >
-                      {isDownloadingPdf ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5 text-emerald-600" />
-                      )}
-                      <span>📥 Download Result PDF</span>
-                    </button>
+          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {currentItem.is_published && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    disabled={isDownloadingPdf}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Download Official Result PDF"
+                  >
+                    {isDownloadingPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    )}
+                    <span>📥 Download Result PDF</span>
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={handleUnpublish}
-                      disabled={isUnpublishing}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {isUnpublishing ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      )}
-                      <span>Unpublish Live Result</span>
-                    </button>
+                  <button
+                    type="button"
+                    onClick={handleUnpublish}
+                    disabled={isUnpublishing}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isUnpublishing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    )}
+                    <span>Unpublish Live Result</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Print Score Sheet */}
+              <button
+                type="button"
+                onClick={handlePrintScoreSheet}
+                disabled={isPrintingScoreSheet}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-slate-50 text-[#1B254B] border border-slate-300 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                title="Print Consolidated Score Sheet (Matching ITEM_207.pdf)"
+              >
+                {isPrintingScoreSheet ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-[#F26430]" />
+                    <span>Generating Score Sheet...</span>
+                  </>
+                ) : (
+                  <>
+                    <Printer className="w-4 h-4 text-[#1B254B]" />
+                    <span>🖨️ Print Score Sheet</span>
                   </>
                 )}
-              </div>
+              </button>
 
-              <div className="flex items-center gap-3">
-                {/* Save Draft */}
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  disabled={isSavingDraft}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-[#1B254B] transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingDraft ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#F26430]" />
-                      <span>Saving Draft...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 text-[#F26430]" />
-                      <span>💾 Save Draft Scores</span>
-                    </>
-                  )}
-                </button>
+              {rows.length > 0 && (
+                <>
+                  {/* Save Draft */}
+                  <button
+                    type="button"
+                    onClick={handleSaveDraft}
+                    disabled={isSavingDraft}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-[#1B254B] transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingDraft ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#F26430]" />
+                        <span>Saving Draft...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 text-[#F26430]" />
+                        <span>💾 Save Draft Scores</span>
+                      </>
+                    )}
+                  </button>
 
-                {/* Preview & Publish */}
-                <button
-                  type="button"
-                  onClick={() => setShowPublishModal(true)}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#16A34A] hover:bg-emerald-700 text-white transition-all shadow-md cursor-pointer"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>👁️ Preview & Publish Result</span>
-                </button>
-              </div>
+                  {/* Preview & Publish */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPublishModal(true)}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#16A34A] hover:bg-emerald-700 text-white transition-all shadow-md cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>👁️ Preview & Publish Result</span>
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -1050,12 +1093,21 @@ export default function ScoreSheetManager({ onShowToast }) {
         </div>
       )}
 
-      {/* Off-screen high-res template for PDF generation */}
+      {/* Off-screen high-res template for Result PDF generation */}
       {currentItem && (
         <OfficialResultPdfTemplate
           containerId={`admin-result-pdf-${currentItem.code}`}
           item={currentItem}
           results={rows.filter((r) => r.rank || r.grade)}
+        />
+      )}
+
+      {/* Hidden Consolidated Score Sheet PDF Template (Matching ITEM_207.pdf) */}
+      {currentItem && (
+        <ScoreSheetPdfTemplate
+          containerId={`admin-scoresheet-pdf-${currentItem.code}`}
+          item={currentItem}
+          rows={rows}
         />
       )}
     </div>

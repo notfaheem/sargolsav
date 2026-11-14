@@ -65,3 +65,68 @@ export async function downloadResultPdf(containerId, itemCode) {
   pdf.save(filename);
   return filename;
 }
+
+/**
+ * Generates an official Consolidated Score Sheet A4 PDF matching ITEM_207.pdf.
+ *
+ * @param {string} containerId - DOM ID of the hidden template element
+ * @param {string|number} itemCode - Item code for file naming
+ * @returns {Promise<string>} Downloaded filename
+ */
+export async function downloadScoreSheetPdf(containerId, itemCode) {
+  const element = document.getElementById(containerId);
+  if (!element) {
+    throw new Error(`Score Sheet PDF Template container #${containerId} not found in DOM`);
+  }
+
+  // Ensure images are fully loaded before rendering
+  const images = element.getElementsByTagName('img');
+  await Promise.all(
+    Array.from(images).map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+
+  const canvas = await html2canvas(element, {
+    scale: 2, // 2x DPI for ultra-sharp typography
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff',
+    windowWidth: 800,
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.98);
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+  const pdfPageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+  const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  // Add first page
+  pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+  heightLeft -= pdfPageHeight;
+
+  // Handle multi-page if entries list is long
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+    heightLeft -= pdfPageHeight;
+  }
+
+  const filename = `${itemCode}_Consolidated_Score_Sheet.pdf`;
+  pdf.save(filename);
+  return filename;
+}
+

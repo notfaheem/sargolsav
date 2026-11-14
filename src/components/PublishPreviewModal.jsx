@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { X, Award, CheckCircle2, AlertCircle, Loader2, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { X, Award, CheckCircle2, AlertCircle, Loader2, Sparkles, SlidersHorizontal, Printer } from 'lucide-react';
+import ScoreSheetPdfTemplate from './ScoreSheetPdfTemplate';
+import { downloadScoreSheetPdf } from '../lib/pdfGenerator';
 
 export default function PublishPreviewModal({
   isOpen,
@@ -11,6 +13,7 @@ export default function PublishPreviewModal({
 }) {
   // Allow admin overrides
   const [overrides, setOverrides] = useState({});
+  const [isPrintingScoreSheet, setIsPrintingScoreSheet] = useState(false);
 
   if (!isOpen || !item) return null;
 
@@ -43,6 +46,18 @@ export default function PublishPreviewModal({
 
   const handleConfirm = () => {
     onConfirmPublish(previewRows);
+  };
+
+  const handlePrintScoreSheet = async () => {
+    if (isPrintingScoreSheet || !item) return;
+    setIsPrintingScoreSheet(true);
+    try {
+      await downloadScoreSheetPdf(`preview-scoresheet-pdf-${item.code}`, item.code);
+    } catch (err) {
+      console.error('Error printing score sheet from preview:', err);
+    } finally {
+      setIsPrintingScoreSheet(false);
+    }
   };
 
   return (
@@ -247,7 +262,22 @@ export default function PublishPreviewModal({
             Publishing will make this result immediately visible to the public on the portal.
           </p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrintScoreSheet}
+              disabled={isPrintingScoreSheet}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-white hover:bg-slate-100 text-[#1B254B] border border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+              title="Print Consolidated Score Sheet"
+            >
+              {isPrintingScoreSheet ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#F26430]" />
+              ) : (
+                <Printer className="w-3.5 h-3.5 text-[#1B254B]" />
+              )}
+              <span>🖨️ Print Score Sheet</span>
+            </button>
+
             <button
               type="button"
               onClick={onClose}
@@ -277,6 +307,13 @@ export default function PublishPreviewModal({
             </button>
           </div>
         </div>
+
+        {/* Hidden Consolidated Score Sheet PDF Template for overrides */}
+        <ScoreSheetPdfTemplate
+          containerId={`preview-scoresheet-pdf-${item.code}`}
+          item={item}
+          rows={previewRows}
+        />
       </div>
     </div>
   );
