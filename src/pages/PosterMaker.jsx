@@ -4,19 +4,13 @@ import { supabase } from '../lib/supabase';
 import html2canvas from 'html2canvas';
 import {
   Trophy,
-  Sparkles,
   ArrowLeft,
   Upload,
   Download,
-  Image as ImageIcon,
   CheckCircle2,
   ShieldCheck,
-  RotateCcw,
   Sliders,
-  User,
   Building2,
-  Layers,
-  Award,
   Loader2,
   Trash2,
   Eye,
@@ -61,7 +55,7 @@ export default function PosterMaker() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  // Ref to the hidden 1080x1920 poster DOM element for html2canvas
+  // Ref to the hidden 1080x1080 square poster DOM element for html2canvas
   const hiddenPosterRef = useRef(null);
 
   // Fetch Published Items on Mount
@@ -223,7 +217,7 @@ export default function PosterMaker() {
     e.target.value = '';
   };
 
-  // Download High-Res Congrats Poster (1080x1920)
+  // Download High-Res Congrats Poster (Strict 1080x1080 1:1 Square Canvas)
   const handleDownloadPoster = async () => {
     if (!hiddenPosterRef.current || isGenerating) return;
     setIsGenerating(true);
@@ -244,14 +238,16 @@ export default function PosterMaker() {
         })
       );
 
-      // Render hidden 1080x1920 canvas
+      // Render hidden 1080x1080 canvas with scale: 2 for ultra-crisp output
       const canvas = await html2canvas(element, {
-        scale: 1, // Native 1080x1920
+        scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#0A0F1D',
+        backgroundColor: '#0F172A',
         width: 1080,
-        height: 1920,
+        height: 1080,
+        windowWidth: 1080,
+        windowHeight: 1080,
         scrollX: 0,
         scrollY: 0,
       });
@@ -275,14 +271,17 @@ export default function PosterMaker() {
     }
   };
 
-  const getRankBadgeText = (rank) => {
-    if (rank === 1) return { text: '🥇 FIRST PLACE', bg: 'bg-amber-400 text-amber-950 border-amber-300' };
-    if (rank === 2) return { text: '🥈 SECOND PLACE', bg: 'bg-slate-200 text-slate-800 border-slate-300' };
-    if (rank === 3) return { text: '🥉 THIRD PLACE', bg: 'bg-orange-500 text-white border-orange-400' };
+  // Helper for Rank Badge
+  const getRankBadge = (rank) => {
+    if (rank === 1) return { text: '🥇 FIRST PLACE', bg: '#FBBF24', textColor: '#020617' };
+    if (rank === 2) return { text: '🥈 SECOND PLACE', bg: '#E2E8F0', textColor: '#0F172A' };
+    if (rank === 3) return { text: '🥉 THIRD PLACE', bg: '#F97316', textColor: '#FFFFFF' };
     return null;
   };
 
-  const rankBadge = getRankBadgeText(posterData.rank);
+  const rankBadgeInfo = getRankBadge(posterData.rank);
+  const nameLength = (posterData.winnerName || '').trim().length;
+  const nameFontSize = nameLength > 22 ? '42px' : '54px';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
@@ -315,7 +314,11 @@ export default function PosterMaker() {
               <span>100% Client-Side Privacy</span>
             </div>
 
-            <img src="/logo.png" alt="Sargolsav Logo" className="h-8 w-auto object-contain bg-white rounded-lg p-0.5" />
+            <img
+              src="/logo.png"
+              alt="Sargolsav Logo"
+              className="h-8 w-auto object-contain bg-white rounded-lg p-0.5"
+            />
           </div>
         </div>
       </header>
@@ -324,7 +327,7 @@ export default function PosterMaker() {
       <div className="bg-emerald-50/90 border-b border-emerald-200 px-4 py-2.5 text-center text-xs text-emerald-900 font-medium flex items-center justify-center gap-2">
         <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
         <span>
-          <strong>Privacy-First Workflow:</strong> All photo processing and poster generation happen locally in your browser. Your photos are never uploaded or saved to our servers.
+          <strong>Privacy-First Workflow:</strong> All photo processing and poster generation happen locally in your browser. Your photos are never saved to our database.
         </span>
       </div>
 
@@ -503,7 +506,7 @@ export default function PosterMaker() {
                   </div>
                   <div>
                     <h4 className="text-xs sm:text-sm font-bold text-[#1B254B]">
-                      {userPhoto ? 'Photo Ready (Stored Locally)' : 'Participant Photo (Optional)'}
+                      {userPhoto ? 'Photo Loaded (Kept In Browser Only)' : 'Participant Photo (Optional)'}
                     </h4>
                     <p className="text-[11px] text-slate-400">
                       Square or portrait photo recommended. Stays strictly inside your browser.
@@ -550,7 +553,9 @@ export default function PosterMaker() {
                     onChange={(e) => setPhotoScale(parseFloat(e.target.value))}
                     className="flex-1 accent-[#F26430] cursor-pointer"
                   />
-                  <span className="font-mono text-[11px] text-slate-400">{Math.round(photoScale * 100)}%</span>
+                  <span className="font-mono text-[11px] text-slate-400">
+                    {Math.round(photoScale * 100)}%
+                  </span>
                 </div>
               )}
 
@@ -589,7 +594,7 @@ export default function PosterMaker() {
                   Ready to Celebrate?
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Downloads high-definition 1080x1920 portrait image for WhatsApp / Instagram.
+                  Downloads high-definition 1:1 square poster (1080×1080) for WhatsApp status & Instagram.
                 </p>
               </div>
 
@@ -602,7 +607,7 @@ export default function PosterMaker() {
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Rendering High-Res Poster...</span>
+                    <span>Rendering 1080×1080 Poster...</span>
                   </>
                 ) : (
                   <>
@@ -620,129 +625,187 @@ export default function PosterMaker() {
             )}
           </div>
 
-          {/* RIGHT COLUMN: Live 9:16 Responsive Poster Preview (5 cols) */}
+          {/* RIGHT COLUMN: Live 1:1 Square Poster Preview (5 cols) */}
           <div className="lg:col-span-5 flex flex-col items-center">
-            <div className="w-full max-w-sm sticky top-20 space-y-3">
+            <div className="w-full max-w-[420px] sticky top-20 space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5 text-[#F26430]" />
-                  Live Preview (9:16 Story)
+                  Live Preview (1:1 Square)
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">1080 × 1920 px</span>
+                <span className="text-[10px] font-mono text-slate-400">1080 × 1080 px</span>
               </div>
 
-              {/* Scaled Responsive Live Preview Canvas */}
-              <div className="aspect-[9/16] w-full bg-[#0A0F1D] rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-800 relative flex flex-col justify-between p-5 text-white select-none">
-                {/* Background festive glow */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-44 bg-amber-500/15 blur-3xl pointer-events-none rounded-full" />
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-64 h-36 bg-blue-500/10 blur-3xl pointer-events-none rounded-full" />
+              {/* Scaled Responsive 1:1 Square Preview Canvas */}
+              <div
+                style={{
+                  background: 'radial-gradient(circle at 50% 25%, #1E1B4B 0%, #0F172A 70%, #090D16 100%)',
+                }}
+                className="w-full aspect-square rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-800 relative flex flex-col justify-between p-4 sm:p-5 text-white select-none box-border"
+              >
+                {/* Decorative gold corner accents */}
+                <div className="absolute top-2.5 left-2.5 w-5 h-5 border-t-2 border-l-2 border-amber-400 rounded-tl-lg pointer-events-none opacity-80" />
+                <div className="absolute top-2.5 right-2.5 w-5 h-5 border-t-2 border-r-2 border-amber-400 rounded-tr-lg pointer-events-none opacity-80" />
+                <div className="absolute bottom-2.5 left-2.5 w-5 h-5 border-b-2 border-l-2 border-amber-400 rounded-bl-lg pointer-events-none opacity-80" />
+                <div className="absolute bottom-2.5 right-2.5 w-5 h-5 border-b-2 border-r-2 border-amber-400 rounded-br-lg pointer-events-none opacity-80" />
 
-                {/* 1. Top Header */}
-                <div className="relative z-10 text-center space-y-1">
-                  <div className="inline-flex items-center gap-2 bg-white/95 px-3 py-1 rounded-xl shadow-sm mb-1">
-                    <img src="/logo.png" alt="Sargolsav Logo" className="h-6 w-auto object-contain" />
-                    <span className="text-[10px] font-black tracking-wider uppercase text-[#1B254B]">
-                      SARGOLSAV 2026
-                    </span>
-                  </div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-amber-300/90">
-                    MSM-CIER NILAMBUR SUB-DISTRICT
-                  </p>
-                </div>
-
-                {/* 2. Congratulations Headline */}
-                <div className="relative z-10 text-center my-auto py-1">
-                  <div className="inline-block">
-                    <h2 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 uppercase drop-shadow-sm">
-                      CONGRATULATIONS
-                    </h2>
-                    <p className="font-ml text-xs font-bold text-amber-100/90 mt-0.5">
-                      അഭിനന്ദനങ്ങൾ!
-                    </p>
-                  </div>
-
-                  {/* 3. Photo Frame Box */}
-                  <div className="my-3 flex justify-center">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl p-1 bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-xl shadow-amber-500/10">
-                      <div className="w-full h-full rounded-[22px] bg-slate-900 overflow-hidden flex items-center justify-center relative">
-                        {userPhoto ? (
-                          <img
-                            src={userPhoto}
-                            alt="Winner"
-                            className="w-full h-full object-cover transition-transform"
-                            style={{ transform: `scale(${photoScale})` }}
-                          />
-                        ) : (
-                          <div className="text-center p-2 text-slate-500 space-y-1">
-                            <Camera className="w-7 h-7 mx-auto text-slate-600" />
-                            <span className="text-[9px] font-semibold block leading-tight text-slate-400">
-                              Upload Photo
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                {/* 1. Top Header Card */}
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="bg-white px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5">
+                    <img src="/logo.png" alt="Sargolsav Logo" className="h-7 w-auto object-contain" />
+                    <div className="text-left">
+                      <h2 className="text-xs sm:text-sm font-black tracking-tight text-[#1B254B] leading-none">
+                        SARGOLSAV 2026
+                      </h2>
+                      <span className="text-[8px] sm:text-[9px] font-extrabold text-[#EA580C] uppercase tracking-wider block mt-0.5">
+                        NILAMBUR SUB-DISTRICT
+                      </span>
                     </div>
                   </div>
+                  <p className="text-[8px] sm:text-[9px] font-bold text-[#FDE68A] uppercase tracking-widest mt-1">
+                    MSM-CIER KERALA • AMAL COLLEGE, MYLADI
+                  </p>
+                </div>
 
-                  {/* 4. Winner Name & Madrasa */}
-                  <div className="space-y-1">
-                    <h3 className="font-ml text-base sm:text-lg font-black text-white leading-tight px-2 line-clamp-2">
-                      {posterData.winnerName || 'Winner Name'}
-                    </h3>
+                {/* 2. Celebration Heading */}
+                <div className="relative z-10 text-center my-0.5">
+                  <h3
+                    style={{ color: '#FBBF24' }}
+                    className="text-base sm:text-lg font-black tracking-wide uppercase leading-tight"
+                  >
+                    🏆 CONGRATULATIONS!
+                  </h3>
+                  <p
+                    style={{ color: '#FFFFFF' }}
+                    className="font-ml text-xs sm:text-sm font-bold leading-normal mt-0.5"
+                  >
+                    അഭിനന്ദനങ്ങൾ!
+                  </p>
+                </div>
 
-                    {posterData.madrasa && (
-                      <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 text-amber-300 text-[10px] font-bold border border-amber-400/20">
-                        <Building2 className="w-2.5 h-2.5" />
-                        <span>{posterData.madrasa}</span>
+                {/* 3. Center Photo Frame */}
+                <div className="relative z-10 flex justify-center my-1">
+                  <div
+                    style={{
+                      width: '115px',
+                      height: '115px',
+                      borderRadius: '20px',
+                      border: '3px solid #FBBF24',
+                      boxShadow: '0 0 20px rgba(251, 191, 36, 0.35)',
+                    }}
+                    className="overflow-hidden bg-slate-900 flex items-center justify-center shrink-0"
+                  >
+                    {userPhoto ? (
+                      <img
+                        src={userPhoto}
+                        alt="Winner"
+                        className="w-full h-full object-cover object-center"
+                        style={{ transform: `scale(${photoScale})` }}
+                      />
+                    ) : (
+                      <div className="text-center p-2 text-slate-500 space-y-1">
+                        <Camera className="w-6 h-6 mx-auto text-slate-600" />
+                        <span className="text-[8px] font-semibold block leading-tight text-slate-400">
+                          Upload Photo
+                        </span>
                       </div>
-                    )}
-                  </div>
-
-                  {/* 5. Rank & Grade Badges */}
-                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2.5">
-                    {rankBadge && (
-                      <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase border shadow-xs ${rankBadge.bg}`}>
-                        {rankBadge.text}
-                      </span>
-                    )}
-
-                    {posterData.grade && (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-emerald-500 text-white border border-emerald-400 shadow-xs">
-                        GRADE {posterData.grade}
-                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* 6. Item Details Footer Banner */}
-                <div className="relative z-10 pt-2 border-t border-white/10 text-center space-y-0.5">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    {posterData.category || 'CATEGORY'}
+                {/* 4. Winner Name & Madrasa */}
+                <div className="relative z-10 text-center space-y-1 my-0.5">
+                  <h4
+                    style={{ color: '#FFFFFF', lineHeight: 1.15 }}
+                    className="font-ml text-sm sm:text-base font-black uppercase px-2"
+                  >
+                    {posterData.winnerName || 'Winner Name'}
+                  </h4>
+
+                  {posterData.madrasa && (
+                    <div
+                      style={{
+                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                        border: '1.5px solid #475569',
+                      }}
+                      className="inline-flex items-center justify-center gap-1 px-3.5 py-1 rounded-full"
+                    >
+                      <Building2 className="w-2.5 h-2.5 text-amber-300" />
+                      <span className="text-[9px] sm:text-[10px] font-bold text-[#F8FAFC]">
+                        🕌 MADRASA: {posterData.madrasa}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Rank & Grade Badges */}
+                <div className="relative z-10 flex items-center justify-center gap-2 my-1">
+                  {rankBadgeInfo && (
+                    <div
+                      style={{
+                        backgroundColor: rankBadgeInfo.bg,
+                        color: rankBadgeInfo.textColor,
+                      }}
+                      className="px-3 py-1 rounded-xl text-[9px] sm:text-[10px] font-black uppercase flex items-center justify-center shadow-sm"
+                    >
+                      {rankBadgeInfo.text}
+                    </div>
+                  )}
+
+                  {posterData.grade && (
+                    <div
+                      style={{
+                        backgroundColor: '#10B981',
+                        color: '#FFFFFF',
+                      }}
+                      className="px-3 py-1 rounded-xl text-[9px] sm:text-[10px] font-black uppercase flex items-center justify-center shadow-sm"
+                    >
+                      ⭐ GRADE {posterData.grade}
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Bottom Competition Item Card */}
+                <div
+                  style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    border: '1px solid #334155',
+                  }}
+                  className="relative z-10 w-full rounded-xl py-2 px-3 text-center flex flex-col items-center justify-center"
+                >
+                  <p
+                    style={{ color: '#FB923C' }}
+                    className="text-[8px] sm:text-[9px] font-black uppercase leading-tight"
+                  >
+                    {posterData.category || 'CATEGORY'} • ITEM #{selectedItemCode || '—'}
                   </p>
-                  <p className="font-ml text-[11px] font-bold text-slate-100 truncate px-1">
+                  <p
+                    style={{ color: '#FFFFFF', lineHeight: 1.35 }}
+                    className="font-ml text-[10px] sm:text-[11px] font-bold mt-0.5 truncate max-w-full"
+                  >
                     {posterData.itemNameMl || 'Competition Item'}
                   </p>
                   {posterData.itemNameEn && (
-                    <p className="text-[9px] text-slate-400 truncate px-1">
+                    <p
+                      style={{ color: '#CBD5E1', lineHeight: 1.25 }}
+                      className="text-[8px] sm:text-[9px] font-medium truncate max-w-full"
+                    >
                       {posterData.itemNameEn}
                     </p>
                   )}
-                  <p className="text-[8px] text-slate-500 pt-1">
-                    Amal College, Myladi • Nilambur
-                  </p>
                 </div>
               </div>
 
               {/* Action Hint */}
               <p className="text-[11px] text-slate-400 text-center">
-                Tap <strong>Download Congrats Poster</strong> on the left to export high-definition image.
+                Tap <strong>Download Congrats Poster</strong> on the left to export high-definition 1:1 image.
               </p>
             </div>
           </div>
         </div>
       </main>
 
-      {/* 4. Hidden Native 1080x1920 Poster Element for Ultra-Sharp Canvas Export */}
+      {/* 4. Strict 1080px × 1080px 1:1 Square Hidden Poster Canvas for html2canvas */}
       <div
         ref={hiddenPosterRef}
         style={{
@@ -750,111 +813,420 @@ export default function PosterMaker() {
           left: '-9999px',
           top: '0',
           width: '1080px',
-          height: '1920px',
+          height: '1080px',
           zIndex: -9999,
           pointerEvents: 'none',
+          background: 'radial-gradient(circle at 50% 25%, #1E1B4B 0%, #0F172A 70%, #090D16 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '44px 48px',
+          boxSizing: 'border-box',
+          overflow: 'visible',
         }}
-        className="bg-[#0A0F1D] text-white flex flex-col justify-between p-16 relative overflow-hidden font-sans"
+        className="font-sans select-none text-white"
       >
-        {/* Decorative Background Elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-amber-500/15 blur-[120px] pointer-events-none rounded-full" />
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-blue-600/10 blur-[140px] pointer-events-none rounded-full" />
+        {/* Subtle Decorative Gold Corner Accents */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            width: '40px',
+            height: '40px',
+            borderTop: '4px solid #FBBF24',
+            borderLeft: '4px solid #FBBF24',
+            borderTopLeftRadius: '14px',
+            pointerEvents: 'none',
+            opacity: 0.85,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            width: '40px',
+            height: '40px',
+            borderTop: '4px solid #FBBF24',
+            borderRight: '4px solid #FBBF24',
+            borderTopRightRadius: '14px',
+            pointerEvents: 'none',
+            opacity: 0.85,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            width: '40px',
+            height: '40px',
+            borderBottom: '4px solid #FBBF24',
+            borderLeft: '4px solid #FBBF24',
+            borderBottomLeftRadius: '14px',
+            pointerEvents: 'none',
+            opacity: 0.85,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            width: '40px',
+            height: '40px',
+            borderBottom: '4px solid #FBBF24',
+            borderRight: '4px solid #FBBF24',
+            borderBottomRightRadius: '14px',
+            pointerEvents: 'none',
+            opacity: 0.85,
+          }}
+        />
 
-        {/* Top Header */}
-        <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-          <div className="inline-flex items-center gap-4 bg-white/95 px-6 py-2.5 rounded-2xl shadow-md">
-            <img src="/logo.png" alt="Sargolsav Logo" className="h-16 w-auto object-contain" />
-            <div className="text-left">
-              <h2 className="text-xl font-black tracking-wider uppercase text-[#1B254B] leading-none">
+        {/* SECTION 1: Top Header & Branding (Largest Event Identity) */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            width: '100%',
+          }}
+        >
+          {/* Prominent White Rounded Card */}
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              padding: '12px 36px',
+              borderRadius: '20px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px',
+            }}
+          >
+            <img
+              src="/logo.png"
+              alt="Sargolsav Logo"
+              style={{
+                height: '75px',
+                width: 'auto',
+                objectFit: 'contain',
+              }}
+            />
+            <div style={{ textAlign: 'left' }}>
+              <div
+                style={{
+                  fontSize: '44px',
+                  fontWeight: 900,
+                  color: '#1B254B',
+                  lineHeight: '1',
+                  letterSpacing: '0.02em',
+                }}
+              >
                 SARGOLSAV 2026
-              </h2>
-              <span className="text-xs font-bold text-[#F26430] uppercase tracking-wider block mt-0.5">
-                Nilambur Sub-District
-              </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 800,
+                  color: '#EA580C',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  lineHeight: '1.2',
+                  marginTop: '4px',
+                }}
+              >
+                NILAMBUR SUB-DISTRICT
+              </div>
             </div>
           </div>
 
-          <p className="text-base font-extrabold uppercase tracking-[0.25em] text-amber-300">
+          {/* Subtitle text directly below white card */}
+          <div
+            style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#FDE68A',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              marginTop: '10px',
+              lineHeight: '1.2',
+            }}
+          >
             MSM-CIER KERALA • AMAL COLLEGE, MYLADI
-          </p>
+          </div>
         </div>
 
-        {/* Middle: Congratulations + Photo + Name + Accolades */}
-        <div className="relative z-10 flex flex-col items-center text-center my-auto py-4">
-          <span className="text-5xl mb-2">🏆</span>
-          <h1 className="text-6xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 uppercase drop-shadow-md">
-            CONGRATULATIONS
-          </h1>
-          <p className="font-ml text-3xl font-black text-amber-200 mt-2">
+        {/* SECTION 2: Celebration Heading */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            width: '100%',
+            marginTop: '4px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '52px',
+              fontWeight: 900,
+              color: '#FBBF24', // Solid bright gold, NO bg-clip-text!
+              lineHeight: '1.15',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            🏆 CONGRATULATIONS!
+          </div>
+          <div
+            style={{
+              fontSize: '36px',
+              fontWeight: 700,
+              color: '#FFFFFF', // Solid pure white
+              lineHeight: '1.3',
+              marginTop: '2px',
+            }}
+            className="font-ml"
+          >
             അഭിനന്ദനങ്ങൾ!
-          </p>
-
-          {/* Photo Frame Container (Large High-Res) */}
-          <div className="my-10 p-2.5 rounded-[48px] bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-2xl shadow-amber-500/20">
-            <div className="w-[360px] h-[360px] rounded-[38px] bg-slate-900 overflow-hidden flex items-center justify-center relative border-4 border-slate-950">
-              {userPhoto ? (
-                <img
-                  src={userPhoto}
-                  alt="Winner"
-                  className="w-full h-full object-cover"
-                  style={{ transform: `scale(${photoScale})` }}
-                />
-              ) : (
-                <div className="text-center p-6 text-slate-500 space-y-2">
-                  <Camera className="w-20 h-20 mx-auto text-slate-600" />
-                  <span className="text-sm font-semibold text-slate-400 block">
-                    Participant Photo
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
+        </div>
 
-          {/* Winner Name */}
-          <h2 className="font-ml text-5xl font-black text-white leading-tight px-8 max-w-3xl drop-shadow-md">
-            {posterData.winnerName || 'Winner Name'}
-          </h2>
-
-          {/* Madrasa */}
-          {posterData.madrasa && (
-            <div className="inline-flex items-center gap-2 mt-4 px-6 py-2 rounded-full bg-white/10 text-amber-300 text-lg font-bold border border-amber-400/30">
-              <Building2 className="w-5 h-5" />
-              <span>MADRASA: {posterData.madrasa}</span>
-            </div>
-          )}
-
-          {/* Accolades: Rank & Grade */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
-            {rankBadge && (
-              <span className={`px-6 py-2.5 rounded-2xl text-xl font-black uppercase border-2 shadow-lg ${rankBadge.bg}`}>
-                {rankBadge.text}
-              </span>
-            )}
-
-            {posterData.grade && (
-              <span className="px-6 py-2.5 rounded-2xl text-xl font-black uppercase bg-emerald-500 text-white border-2 border-emerald-400 shadow-lg">
-                GRADE {posterData.grade}
-              </span>
+        {/* SECTION 3: Winner Photo Frame (Centerpiece, 310px × 310px) */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '4px 0',
+          }}
+        >
+          <div
+            style={{
+              width: '310px',
+              height: '310px',
+              minWidth: '310px',
+              minHeight: '310px',
+              borderRadius: '36px',
+              border: '6px solid #FBBF24',
+              boxShadow: '0 0 35px rgba(251, 191, 36, 0.35)',
+              overflow: 'hidden',
+              backgroundColor: '#0F172A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            {userPhoto ? (
+              <img
+                src={userPhoto}
+                alt="Winner"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                  transform: `scale(${photoScale})`,
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#64748B',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <Camera style={{ width: '64px', height: '64px', color: '#475569' }} />
+                <span
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: '#94A3B8',
+                  }}
+                >
+                  Participant Photo
+                </span>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Bottom Details Footer */}
-        <div className="relative z-10 pt-6 border-t-2 border-white/15 text-center space-y-2">
-          <p className="text-sm font-extrabold uppercase tracking-widest text-[#F26430]">
-            {posterData.category || 'CATEGORY'}
-          </p>
-          <h3 className="font-ml text-2xl font-bold text-white px-8 truncate max-w-4xl mx-auto">
-            {posterData.itemNameMl || 'Competition Item'}
-          </h3>
-          {posterData.itemNameEn && (
-            <p className="text-base text-slate-400 px-8 truncate max-w-4xl mx-auto">
-              ({posterData.itemNameEn})
-            </p>
+        {/* SECTION 4: Winner Name & Madrasa */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            width: '100%',
+          }}
+        >
+          {/* Participant Name with auto-shrink if > 22 chars */}
+          <div
+            style={{
+              fontSize: nameFontSize,
+              fontWeight: 900,
+              color: '#FFFFFF',
+              lineHeight: '1.15',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              maxWidth: '960px',
+              padding: '0 16px',
+            }}
+            className="font-ml"
+          >
+            {posterData.winnerName || 'Winner Name'}
+          </div>
+
+          {/* Madrasa Pill */}
+          {posterData.madrasa && (
+            <div
+              style={{
+                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                border: '2px solid #475569',
+                borderRadius: '9999px',
+                padding: '10px 32px',
+                marginTop: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: '1',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color: '#F8FAFC',
+                  lineHeight: '1',
+                }}
+              >
+                🕌 MADRASA: {posterData.madrasa}
+              </span>
+            </div>
           )}
-          <p className="text-xs text-slate-500 pt-2 uppercase tracking-wider font-semibold">
-            MSM-CIER Sargolsav 2026 • Official Result & Celebration Desk
-          </p>
+        </div>
+
+        {/* SECTION 5: Rank & Grade Badges (Side-by-Side, Dead-Center Aligned) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '24px',
+            margin: '6px 0',
+          }}
+        >
+          {/* If rank is 1, 2, or 3 */}
+          {rankBadgeInfo && (
+            <div
+              style={{
+                backgroundColor: rankBadgeInfo.bg,
+                color: rankBadgeInfo.textColor,
+                borderRadius: '18px',
+                padding: '12px 32px',
+                fontSize: '30px',
+                fontWeight: 900,
+                lineHeight: '1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 15px rgba(251, 191, 36, 0.3)',
+              }}
+            >
+              {rankBadgeInfo.text}
+            </div>
+          )}
+
+          {/* If grade is present */}
+          {posterData.grade && (
+            <div
+              style={{
+                backgroundColor: '#10B981',
+                color: '#FFFFFF',
+                borderRadius: '18px',
+                padding: '12px 32px',
+                fontSize: '30px',
+                fontWeight: 900,
+                lineHeight: '1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              ⭐ GRADE {posterData.grade}
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 6: Bottom Competition Item Banner (Full-Width Highlight Box) */}
+        <div
+          style={{
+            width: '100%',
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid #334155',
+            borderRadius: '20px',
+            padding: '16px 28px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Category Badge */}
+          <div
+            style={{
+              fontSize: '22px',
+              fontWeight: 900,
+              color: '#FB923C',
+              textTransform: 'uppercase',
+              lineHeight: '1.2',
+            }}
+          >
+            {posterData.category || 'CATEGORY'} • ITEM #{selectedItemCode || '—'}
+          </div>
+
+          {/* Malayalam Item Name */}
+          <div
+            style={{
+              fontSize: '36px',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              lineHeight: '1.4',
+              marginTop: '4px',
+            }}
+            className="font-ml"
+          >
+            {posterData.itemNameMl || 'Competition Item'}
+          </div>
+
+          {/* English Item Name */}
+          {posterData.itemNameEn && (
+            <div
+              style={{
+                fontSize: '24px',
+                fontWeight: 600,
+                color: '#CBD5E1',
+                lineHeight: '1.3',
+                marginTop: '2px',
+              }}
+            >
+              {posterData.itemNameEn}
+            </div>
+          )}
         </div>
       </div>
     </div>
