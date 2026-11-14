@@ -133,7 +133,7 @@ export default function ChampionshipsTab() {
             }`}
           >
             <Trophy className="w-4 h-4 text-amber-400" />
-            <span>Overall Unit</span>
+            <span>Overall Madrasa</span>
           </button>
 
           <button
@@ -146,7 +146,7 @@ export default function ChampionshipsTab() {
             }`}
           >
             <Users className="w-4 h-4 text-emerald-400" />
-            <span>Category-wise Units</span>
+            <span>Category-wise Madrasas</span>
           </button>
 
           <button
@@ -244,14 +244,14 @@ export default function ChampionshipsTab() {
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-base sm:text-lg text-[#1B254B]">
-                      Overall Unit Points Table
+                      Overall Madrasa Points Table
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Deduplicated group performance scores • Click any unit row for item breakdown
+                      Deduplicated group performance scores • Click any madrasa row for item breakdown
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
-                    {overallUnitStandings.length} Units Active
+                    {overallUnitStandings.length} Madrasas Active
                   </span>
                 </div>
 
@@ -260,7 +260,7 @@ export default function ChampionshipsTab() {
                     <thead className="bg-slate-50/80 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
                       <tr>
                         <th className="py-3 px-4 w-16 text-center">Rank</th>
-                        <th className="py-3 px-4">Unit Name</th>
+                        <th className="py-3 px-4">Madrasa</th>
                         <th className="py-3 px-3 text-center w-20">🥇 1st</th>
                         <th className="py-3 px-3 text-center w-20">🥈 2nd</th>
                         <th className="py-3 px-3 text-center w-20">🥉 3rd</th>
@@ -348,14 +348,14 @@ export default function ChampionshipsTab() {
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-base sm:text-lg text-[#1B254B]">
-                      {selectedCategory} Unit Points Table
+                      {selectedCategory} Madrasa Points Table
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Points earned exclusively in {selectedCategory} items
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-[#F26430]">
-                    {categoryUnitStandings.length} Units Scored
+                    {categoryUnitStandings.length} Madrasas Scored
                   </span>
                 </div>
 
@@ -369,7 +369,7 @@ export default function ChampionshipsTab() {
                       <thead className="bg-slate-50/80 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
                         <tr>
                           <th className="py-3 px-4 w-16 text-center">Rank</th>
-                          <th className="py-3 px-4">Unit Name</th>
+                          <th className="py-3 px-4">Madrasa</th>
                           <th className="py-3 px-3 text-center w-20">🥇 1st</th>
                           <th className="py-3 px-3 text-center w-20">🥈 2nd</th>
                           <th className="py-3 px-3 text-center w-20">🥉 3rd</th>
@@ -465,7 +465,7 @@ export default function ChampionshipsTab() {
                               {champ.name}
                             </h4>
                             <p className="text-xs text-amber-100 font-semibold truncate">
-                              Unit: {champ.unit} • #{champ.regNo}
+                              Madrasa: {champ.unit} • #{champ.regNo}
                             </p>
                             <div className="mt-2 flex items-center gap-3 font-mono text-xs">
                               <span className="bg-white/20 px-2 py-0.5 rounded font-bold">
@@ -555,8 +555,7 @@ export default function ChampionshipsTab() {
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                              Unit: <strong className="text-slate-700">{student.unit}</strong>
-                              {student.madrasa && ` • ${student.madrasa}`}
+                              Madrasa: <strong className="text-slate-700">{student.unit}</strong>
                             </p>
                           </div>
                         </div>

@@ -142,13 +142,13 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
 
     let winnersText = '';
     if (rank1Winners.length > 0) {
-      winnersText += `🥇 *First Place:* ${rank1Winners.map((w) => `${w.name} (${w.unit}) [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
+      winnersText += `🥇 *First Place:* ${rank1Winners.map((w) => `${w.name} [Madrasa: ${w.unit}] [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
     }
     if (rank2Winners.length > 0) {
-      winnersText += `🥈 *Second Place:* ${rank2Winners.map((w) => `${w.name} (${w.unit}) [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
+      winnersText += `🥈 *Second Place:* ${rank2Winners.map((w) => `${w.name} [Madrasa: ${w.unit}] [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
     }
     if (rank3Winners.length > 0) {
-      winnersText += `🥉 *Third Place:* ${rank3Winners.map((w) => `${w.name} (${w.unit}) [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
+      winnersText += `🥉 *Third Place:* ${rank3Winners.map((w) => `${w.name} [Madrasa: ${w.unit}] [${w.grade ? `Grade ${w.grade}, ` : ''}${w.points} pts]`).join(', ')}\n`;
     }
 
     const footer = `\nView full live results at: ${window.location.origin}`;
@@ -341,7 +341,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             {winner.name}
                           </h4>
                           <p className="text-xs font-semibold text-amber-800 mt-0.5 truncate">
-                            {winner.unit}
+                            Madrasa: {winner.unit}
                           </p>
                           <p className="text-[11px] font-mono text-amber-700/80 mt-0.5">
                             Reg No: #{winner.reg_no}
@@ -383,7 +383,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             {winner.name}
                           </h4>
                           <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">
-                            {winner.unit}
+                            Madrasa: {winner.unit}
                           </p>
                           <p className="text-[11px] font-mono text-slate-500 mt-0.5">
                             Reg No: #{winner.reg_no}
@@ -425,7 +425,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             {winner.name}
                           </h4>
                           <p className="text-xs font-semibold text-orange-800 mt-0.5 truncate">
-                            {winner.unit}
+                            Madrasa: {winner.unit}
                           </p>
                           <p className="text-[11px] font-mono text-orange-700/80 mt-0.5">
                             Reg No: #{winner.reg_no}
@@ -476,7 +476,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                           <th className="py-2.5 px-3 w-12 text-center">SL NO</th>
                           <th className="py-2.5 px-3 w-20">REG NO</th>
                           <th className="py-2.5 px-4">NAME</th>
-                          <th className="py-2.5 px-4">UNIT</th>
+                          <th className="py-2.5 px-4">MADRASA</th>
                           <th className="py-2.5 px-3 text-center w-20">GRADE</th>
                           <th className="py-2.5 px-3 text-center w-24">RANK</th>
                           <th className="py-2.5 px-3 text-center w-20">POINTS</th>

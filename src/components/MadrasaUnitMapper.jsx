@@ -324,14 +324,14 @@ export default function MadrasaUnitMapper({ onShowToast, onSyncSuccess, isModal 
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-lg sm:text-xl text-[#1B254B]">
-                  Madrasa to Unit Mapper
+                  Madrasa Mapper
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#F26430]">
                   Rule 19 Compliant
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Maps each Madrasa institution to its official Unit short-name. Units with 2 Madrasas cleanly combine points in Championships!
+                Maps each Madrasa Full Name to its clean Madrasa (Short Name). Madrasas sharing the same name cleanly combine points in Championships!
               </p>
             </div>
           </div>
@@ -394,7 +394,7 @@ export default function MadrasaUnitMapper({ onShowToast, onSyncSuccess, isModal 
 
           <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Unified Units
+              Unified Madrasas (Short)
             </span>
             <span className="font-mono font-black text-lg text-emerald-700">
               {stats.totalUnits}
@@ -403,7 +403,7 @@ export default function MadrasaUnitMapper({ onShowToast, onSyncSuccess, isModal 
 
           <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-200/80 text-center">
             <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">
-              Shared Units (2+ Madrasas)
+              Shared Names (2+ Madrasas)
             </span>
             <span className="font-mono font-black text-lg text-purple-900">
               {stats.sharedMadrasasCount}
@@ -434,7 +434,7 @@ export default function MadrasaUnitMapper({ onShowToast, onSyncSuccess, isModal 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Madrasa or Unit..."
+            placeholder="Search Madrasa Full Name or Short Name..."
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#1B254B] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#F26430]"
           />
           {searchQuery && (
@@ -513,7 +513,7 @@ export default function MadrasaUnitMapper({ onShowToast, onSyncSuccess, isModal 
                   <th className="py-3 px-4 w-12 text-center">#</th>
                   <th className="py-3 px-4">Madrasa Full Name (Source)</th>
                   <th className="py-3 px-3 w-28 text-center">Students</th>
-                  <th className="py-3 px-4 w-72">Assigned Unit Short Name</th>
+                  <th className="py-3 px-4 w-72">Assigned Madrasa (Short Name)</th>
                   <th className="py-3 px-3 w-36 text-center">Status</th>
                 </tr>
               </thead>

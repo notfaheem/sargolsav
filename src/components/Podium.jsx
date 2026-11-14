@@ -48,7 +48,7 @@ export default function Podium({ standings = [], onItemClick, type = 'UNIT' }) {
           <span>Live Championship Podium</span>
         </div>
         <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white font-ml">
-          {type === 'UNIT' ? 'യൂണിറ്റ് പോഡിയം' : 'പ്രതിഭാ പോഡിയം'}
+          {type === 'UNIT' ? 'മദ്രസ പോഡിയം' : 'പ്രതിഭാ പോഡിയം'}
         </h3>
         <p className="text-xs text-slate-400 mt-1">
           {type === 'UNIT'

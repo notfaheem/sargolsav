@@ -126,7 +126,7 @@ export default function GlobalSearchPanel({
             <span>Search Results for &ldquo;{query}&rdquo;</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Instant search across participants, registration numbers, and festival units.
+            Instant search across participants, registration numbers, and madrasas.
           </p>
         </div>
 
@@ -152,7 +152,7 @@ export default function GlobalSearchPanel({
           </div>
           <h4 className="text-base font-bold text-[#1B254B]">No matches found for &ldquo;{query}&rdquo;</h4>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Try searching by exact registration number (e.g. 10252), participant name, or unit name.
+            Try searching by exact registration number (e.g. 10252), participant name, or madrasa.
           </p>
         </div>
       ) : (
@@ -186,7 +186,7 @@ export default function GlobalSearchPanel({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
-                        Unit Summary
+                        Madrasa Summary
                       </span>
                       <h4 className="text-lg sm:text-xl font-extrabold text-[#1B254B] mt-0.5">
                         {unitName}
@@ -199,7 +199,7 @@ export default function GlobalSearchPanel({
 
                   <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end">
                     <div className="text-center px-4 py-2 bg-white rounded-xl border border-blue-200 shadow-2xs">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Unit Points</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Madrasa Points</p>
                       <p className="text-lg font-black text-blue-700 font-mono">
                         {unitPoints} pts
                       </p>
@@ -262,7 +262,7 @@ export default function GlobalSearchPanel({
                         {student.name}
                       </h4>
                       <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                        Unit: {student.unit || '—'} {student.madrasa ? `• ${student.madrasa}` : ''}
+                        Madrasa: {student.unit || '—'}
                       </p>
                     </div>
 

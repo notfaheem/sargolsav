@@ -20,7 +20,7 @@ export default function UnitBreakdownModal({ unitData, isOpen, onClose }) {
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#F26430] text-white">
                   Rank #{unitData.position || 1}
                 </span>
-                <span className="text-xs text-slate-300 font-medium">Unit Scorecard</span>
+                <span className="text-xs text-slate-300 font-medium">Madrasa Scorecard</span>
               </div>
               <h3 className="text-lg sm:text-xl font-bold font-ml text-white mt-0.5">
                 {unitData.unit}
@@ -73,7 +73,7 @@ export default function UnitBreakdownModal({ unitData, isOpen, onClose }) {
 
           {breakdown.length === 0 ? (
             <div className="py-12 text-center text-slate-400 text-xs italic">
-              No published points recorded for this unit yet.
+              No published points recorded for this madrasa yet.
             </div>
           ) : (
             <div className="space-y-2">

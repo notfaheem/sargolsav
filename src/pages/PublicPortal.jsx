@@ -180,7 +180,7 @@ export default function PublicPortal() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Reg No, Participant Name, or Unit..."
+                  placeholder="Search by Reg No, Name, or Madrasa..."
                   className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-10 py-3.5 text-sm sm:text-base text-[#1B254B] placeholder:text-slate-400 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-[#F26430] focus:border-transparent transition-all"
                 />
                 {searchQuery && (
@@ -196,7 +196,7 @@ export default function PublicPortal() {
               </div>
               {!searchQuery && (
                 <p className="mt-1.5 text-[11px] text-center text-slate-400 font-medium">
-                  Instant search: Type a student Reg No, name, or unit to view individual points & result sheets.
+                  Instant search: Type a student Reg No, name, or madrasa to view individual points & result sheets.
                 </p>
               )}
             </div>

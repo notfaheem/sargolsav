@@ -509,12 +509,12 @@ export default function ParticipantManager({ onShowToast }) {
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Units
+              Total Madrasas
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#1B254B] mt-1 font-mono">
               {distinctUnits.length}
             </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Sub-District madrasa units</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Sub-District madrasas</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#2563EB] border border-blue-200 flex items-center justify-center">
             <Building2 className="w-6 h-6" />
@@ -583,10 +583,10 @@ export default function ParticipantManager({ onShowToast }) {
             type="button"
             onClick={() => setShowMadrasaMapperModal(true)}
             className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-all shadow-xs cursor-pointer"
-            title="Open Madrasa to Unit Mapping Manager"
+            title="Open Madrasa Mapping Manager"
           >
             <Building2 className="w-4 h-4 text-purple-600" />
-            <span>🏫 Madrasa Unit Mapper</span>
+            <span>🏫 Madrasa Mapper</span>
           </button>
         </div>
 
@@ -792,7 +792,7 @@ export default function ParticipantManager({ onShowToast }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Reg No, Name, or Unit..."
+              placeholder="Search by Reg No, Name, or Madrasa..."
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-8 py-2.5 text-xs sm:text-sm text-[#1B254B] placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B]"
             />
             {searchQuery && (
@@ -828,7 +828,7 @@ export default function ParticipantManager({ onShowToast }) {
               onChange={(e) => setFilterUnit(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-[#1B254B] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B] max-w-[150px] truncate"
             >
-              <option value="ALL">All Units</option>
+              <option value="ALL">All Madrasas</option>
               {distinctUnits.map((unit) => (
                 <option key={unit} value={unit}>
                   {unit}
@@ -846,8 +846,8 @@ export default function ParticipantManager({ onShowToast }) {
                 <th className="py-3 px-4">Reg No</th>
                 <th className="py-3 px-4">Participant Name</th>
                 <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Unit</th>
-                <th className="py-3 px-4">Madrasa</th>
+                <th className="py-3 px-4">MADRASA (SHORT)</th>
+                <th className="py-3 px-4">MADRASA FULL NAME</th>
                 <th className="py-3 px-4">Enrolled Items</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>

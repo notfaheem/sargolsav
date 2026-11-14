@@ -658,7 +658,7 @@ export default function ScoreSheetManager({ onShowToast }) {
                   <th className="py-3 px-3 w-12 text-center">Sl.</th>
                   <th className="py-3 px-3 w-24">Chest No</th>
                   <th className="py-3 px-3 w-20">Reg. No</th>
-                  <th className="py-3 px-4">Participant & Unit</th>
+                  <th className="py-3 px-4">Participant & Madrasa</th>
                   <th className="py-3 px-3 w-24 text-center">Judge 1 (100)</th>
                   <th className="py-3 px-3 w-24 text-center">Judge 2 (100)</th>
                   <th className="py-3 px-3 w-24 text-center">Judge 3 (100)</th>

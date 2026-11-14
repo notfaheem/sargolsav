@@ -101,7 +101,7 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
               Name
             </th>
             <th className="border border-slate-400 py-2.5 px-3">
-              Unit
+              Madrasa
             </th>
             <th className="border border-slate-400 py-2.5 px-3 text-center w-16">
               GRADE
