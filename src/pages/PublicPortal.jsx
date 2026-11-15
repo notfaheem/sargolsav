@@ -11,11 +11,12 @@ import GlobalSearchPanel from '../components/GlobalSearchPanel';
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import PublicResourcesTab from '../components/PublicResourcesTab';
 import DeveloperFooter from '../components/DeveloperFooter';
-import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers } from 'lucide-react';
+import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers, Clock, Eye } from 'lucide-react';
 
 export default function PublicPortal() {
   const [activeTab, setActiveTab] = useState('results');
   const [selectedCategory, setSelectedCategory] = useState('KIDS');
+  const [showPublishedOnly, setShowPublishedOnly] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Selected item for Result View Modal (published result or awaiting notice)
@@ -133,7 +134,7 @@ export default function PublicPortal() {
     return items.filter((i) => i.is_published);
   }, [items]);
 
-  // Category counts
+  // Category counts dynamically matching the active toggle mode (showPublishedOnly)
   const categoryCounts = useMemo(() => {
     const counts = {};
     for (const cat of CATEGORIES) {
@@ -141,21 +142,31 @@ export default function PublicPortal() {
     }
     for (const item of items) {
       if (counts[item.category] !== undefined) {
-        counts[item.category]++;
+        if (!showPublishedOnly || item.is_published) {
+          counts[item.category]++;
+        }
       }
     }
     return counts;
-  }, [items]);
+  }, [items, showPublishedOnly]);
 
   // Zero double-click bug handler: pass selected category directly
   const handleSelectCategory = (categoryId) => {
     setSelectedCategory(categoryId);
   };
 
-  // Filter items for selected category when no global search is active
-  const filteredCategoryItems = useMemo(() => {
+  // Filter items for selected category
+  const totalCategoryItems = useMemo(() => {
     return items.filter((item) => item.category === selectedCategory);
   }, [items, selectedCategory]);
+
+  const publishedCategoryItems = useMemo(() => {
+    return totalCategoryItems.filter((item) => item.is_published);
+  }, [totalCategoryItems]);
+
+  const displayedCategoryItems = useMemo(() => {
+    return showPublishedOnly ? publishedCategoryItems : totalCategoryItems;
+  }, [showPublishedOnly, publishedCategoryItems, totalCategoryItems]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -224,16 +235,49 @@ export default function PublicPortal() {
 
                 {/* Category Selector Pills */}
                 <div className="pt-1">
-                  <div className="flex items-center justify-between mb-3 px-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 px-1">
                     <div className="flex items-center gap-2">
                       <Layers className="w-4 h-4 text-slate-500" />
                       <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-600">
                         Categories
                       </span>
                     </div>
-                    <span className="text-xs font-semibold text-slate-500">
-                      {categoryCounts[selectedCategory] || 0} Items in {selectedCategory}
-                    </span>
+
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5">
+                      {/* Segmented Filter Toggle */}
+                      <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200/80 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setShowPublishedOnly(true)}
+                          className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            showPublishedOnly
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                          }`}
+                        >
+                          <span>✅</span>
+                          <span>Published Only</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowPublishedOnly(false)}
+                          className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            !showPublishedOnly
+                              ? 'bg-[#1B254B] text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                          }`}
+                        >
+                          <span>📋</span>
+                          <span>Show All Items</span>
+                        </button>
+                      </div>
+
+                      <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+                        {showPublishedOnly
+                          ? `${publishedCategoryItems.length} Published in ${selectedCategory}`
+                          : `${totalCategoryItems.length} Items in ${selectedCategory}`}
+                      </span>
+                    </div>
                   </div>
 
                   <CategorySelector
@@ -284,19 +328,45 @@ export default function PublicPortal() {
                       </div>
                     ))}
                   </div>
-                ) : filteredCategoryItems.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-3">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                      <Search className="w-6 h-6" />
+                ) : displayedCategoryItems.length === 0 ? (
+                  showPublishedOnly && totalCategoryItems.length > 0 ? (
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-12 text-center space-y-4 shadow-xs">
+                      <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-2xs">
+                        <Clock className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1.5 max-w-md mx-auto">
+                        <h4 className="text-base sm:text-lg font-bold text-[#1B254B]">
+                          No results published in {selectedCategory} yet.
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                          Tabulation and score entry are currently in progress for this category. You can view all {totalCategoryItems.length} scheduled items and their details.
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setShowPublishedOnly(false)}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#1B254B] hover:bg-[#F26430] text-white transition-all shadow-xs hover:shadow-md cursor-pointer hover:scale-102 active:scale-98"
+                        >
+                          <Eye className="w-4 h-4 text-orange-400" />
+                          <span>View All Scheduled {selectedCategory} Items ({totalCategoryItems.length})</span>
+                        </button>
+                      </div>
                     </div>
-                    <h4 className="text-base font-bold text-[#1B254B]">No items found</h4>
-                    <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
-                      No items registered in the {selectedCategory} category yet.
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <Search className="w-6 h-6" />
+                      </div>
+                      <h4 className="text-base font-bold text-[#1B254B]">No items found</h4>
+                      <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+                        No items registered in the {selectedCategory} category yet.
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                    {filteredCategoryItems.map((item) => (
+                    {displayedCategoryItems.map((item) => (
                       <ItemCard
                         key={item.code}
                         item={item}
