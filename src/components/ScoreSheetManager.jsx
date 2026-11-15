@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
-import { calculateScoresheet } from '../lib/tabulationEngine';
+import { calculateScoresheet, comparePublishedResults } from '../lib/tabulationEngine';
 import PublishPreviewModal from './PublishPreviewModal';
 import { CATEGORIES } from './CategorySelector';
 import {
@@ -170,12 +170,45 @@ export default function ScoreSheetManager({ onShowToast }) {
         };
       });
 
-      // Sort by reg_no ascending
-      merged.sort((a, b) => {
-        const numA = parseInt(a.reg_no, 10) || 0;
-        const numB = parseInt(b.reg_no, 10) || 0;
-        return numA - numB;
-      });
+      // Check for saved custom order for this item
+      const savedOrderJson = typeof window !== 'undefined' ? localStorage.getItem(`sargolsav_order_${selectedItemCode}`) : null;
+      let orderMap = null;
+      if (savedOrderJson) {
+        try {
+          const parsedOrder = JSON.parse(savedOrderJson);
+          orderMap = new Map();
+          parsedOrder.forEach((reg, idx) => orderMap.set(String(reg), idx));
+        } catch (e) {}
+      }
+
+      if (orderMap) {
+        merged.sort((a, b) => {
+          const hasA = orderMap.has(String(a.reg_no));
+          const hasB = orderMap.has(String(b.reg_no));
+          if (hasA && hasB) {
+            return orderMap.get(String(a.reg_no)) - orderMap.get(String(b.reg_no));
+          }
+          if (hasA && !hasB) return -1;
+          if (!hasA && hasB) return 1;
+          return comparePublishedResults(a, b);
+        });
+      } else {
+        // If participants already have scores or ranks, default sort by score & rank!
+        const hasScores = merged.some((r) => r.total_score !== null || r.rank !== null || r.grade !== null);
+        if (hasScores) {
+          merged.sort(comparePublishedResults);
+        } else {
+          // If no scores entered yet, default sort by chest_no if present, otherwise reg_no
+          merged.sort((a, b) => {
+            const cA = parseInt(a.chest_no, 10);
+            const cB = parseInt(b.chest_no, 10);
+            if (!isNaN(cA) && !isNaN(cB) && cA > 0 && cB > 0 && cA !== cB) return cA - cB;
+            if (!isNaN(cA) && cA > 0 && (isNaN(cB) || cB <= 0)) return -1;
+            if ((isNaN(cA) || cA <= 0) && !isNaN(cB) && cB > 0) return 1;
+            return (parseInt(a.reg_no, 10) || 0) - (parseInt(b.reg_no, 10) || 0);
+          });
+        }
+      }
 
       // Run tabulation engine calculation
       const calculated = calculateScoresheet(merged, enforceMinRule);
@@ -224,6 +257,71 @@ export default function ScoreSheetManager({ onShowToast }) {
     );
   };
 
+  // Helper to persist current row order for the active item
+  const persistOrder = (updatedRows) => {
+    if (typeof window !== 'undefined' && selectedItemCode) {
+      try {
+        const order = updatedRows.map((r) => r.reg_no);
+        localStorage.setItem(`sargolsav_order_${selectedItemCode}`, JSON.stringify(order));
+      } catch (e) {}
+    }
+  };
+
+  // Quick Sort: By Registration Number ascending
+  const handleSortByRegNo = () => {
+    setRows((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        return (parseInt(a.reg_no, 10) || 0) - (parseInt(b.reg_no, 10) || 0);
+      });
+      persistOrder(sorted);
+      return sorted;
+    });
+    if (onShowToast) onShowToast('Sorted by Registration Number', 'info');
+  };
+
+  // Quick Sort: Numerically by Chest Number (1, 2, 3...)
+  const handleSortByChestNo = () => {
+    setRows((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        const cA = parseInt(a.chest_no, 10);
+        const cB = parseInt(b.chest_no, 10);
+        const hasA = !isNaN(cA) && cA > 0;
+        const hasB = !isNaN(cB) && cB > 0;
+        if (hasA && hasB) return cA - cB;
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+        return (parseInt(a.reg_no, 10) || 0) - (parseInt(b.reg_no, 10) || 0);
+      });
+      persistOrder(sorted);
+      return sorted;
+    });
+    if (onShowToast) onShowToast('Sorted by Chest Number', 'info');
+  };
+
+  // Quick Sort: By Rank (1-3), then highest Total Score descending, then Grade
+  const handleSortByScoreAndRank = () => {
+    setRows((prev) => {
+      const sorted = [...prev].sort(comparePublishedResults);
+      persistOrder(sorted);
+      return sorted;
+    });
+    if (onShowToast) onShowToast('Sorted by Rank & Total Score', 'info');
+  };
+
+  // Manual Row Reordering (Move Up / Move Down)
+  const handleMoveRow = (index, direction) => {
+    setRows((prev) => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      persistOrder(updated);
+      return updated;
+    });
+  };
+
   // Save Draft Scores
   const handleSaveDraft = async () => {
     if (isSavingDraft || !selectedItemCode) return;
@@ -253,6 +351,8 @@ export default function ScoreSheetManager({ onShowToast }) {
         .upsert(updates, { onConflict: 'id' });
 
       if (error) throw error;
+
+      persistOrder(calculated);
 
       logger.success(
         'SAVE_DRAFT_SCORES',
@@ -312,6 +412,8 @@ export default function ScoreSheetManager({ onShowToast }) {
         .eq('code', selectedItemCode);
 
       if (itemError) throw itemError;
+
+      persistOrder(verifiedRows);
 
       logger.success(
         'PUBLISH_RESULT',
@@ -670,12 +772,51 @@ export default function ScoreSheetManager({ onShowToast }) {
             </div>
           </div>
 
+          {/* Quick Sort Toolbar & Reorder Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-600 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-[#F26430]" />
+                Quick Sort Order:
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleSortByRegNo}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs bg-white text-slate-700 hover:text-[#1B254B] border border-slate-200 hover:border-slate-300 shadow-2xs hover:bg-slate-100 transition-all cursor-pointer"
+                title="Sort by Registration Number ascending"
+              >
+                <span>🔢 Sort by Reg No</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSortByChestNo}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs bg-white text-slate-700 hover:text-[#1B254B] border border-slate-200 hover:border-slate-300 shadow-2xs hover:bg-slate-100 transition-all cursor-pointer"
+                title="Sort numerically by Chest Number (1, 2, 3...)"
+              >
+                <span>🏷️ Sort by Chest No</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSortByScoreAndRank}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 shadow-2xs transition-all cursor-pointer"
+                title="Sort by Rank (1, 2, 3), then highest Total Score descending, then Grade"
+              >
+                <span>🏆 Sort by Score & Rank</span>
+              </button>
+            </div>
+          </div>
+
           {/* 3. Consolidated Score Sheet Table */}
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="min-w-full text-xs text-left">
               <thead className="bg-[#1B254B] text-white font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-3 px-3 w-12 text-center">Sl.</th>
+                  <th className="py-3 px-2 w-16 text-center">Sl.</th>
                   <th className="py-3 px-3 w-24">Chest No</th>
                   <th className="py-3 px-3 w-20">Reg. No</th>
                   <th className="py-3 px-4">Participant & Madrasa</th>
@@ -723,9 +864,33 @@ export default function ScoreSheetManager({ onShowToast }) {
                             : ''
                         }`}
                       >
-                        {/* Sl No */}
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-400">
-                          {idx + 1}
+                        {/* Sl No & Manual Up/Down Reorder Buttons */}
+                        <td className="py-2 px-2 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="font-mono font-bold text-slate-400 w-5 text-right">
+                              {idx + 1}
+                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveRow(idx, -1)}
+                                className="w-5 h-3.5 flex items-center justify-center text-[9px] font-black text-slate-600 hover:text-[#1B254B] bg-slate-100 hover:bg-slate-200 disabled:opacity-20 disabled:hover:bg-slate-100 rounded cursor-pointer disabled:cursor-not-allowed leading-none transition-colors"
+                                title="Move Row Up"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === rows.length - 1}
+                                onClick={() => handleMoveRow(idx, 1)}
+                                className="w-5 h-3.5 flex items-center justify-center text-[9px] font-black text-slate-600 hover:text-[#1B254B] bg-slate-100 hover:bg-slate-200 disabled:opacity-20 disabled:hover:bg-slate-100 rounded cursor-pointer disabled:cursor-not-allowed leading-none transition-colors"
+                                title="Move Row Down"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Chest No */}
@@ -1098,7 +1263,16 @@ export default function ScoreSheetManager({ onShowToast }) {
         <OfficialResultPdfTemplate
           containerId={`admin-result-pdf-${currentItem.code}`}
           item={currentItem}
-          results={rows.filter((r) => r.rank || r.grade)}
+          results={(() => {
+            const qualified = rows.filter((r) => r.rank || r.grade);
+            const rowsOrderMap = new Map();
+            rows.forEach((r, idx) => rowsOrderMap.set(String(r.reg_no), idx));
+            return [...qualified].sort((a, b) => {
+              const res = comparePublishedResults(a, b);
+              if (res !== 0) return res;
+              return (rowsOrderMap.get(String(a.reg_no)) || 0) - (rowsOrderMap.get(String(b.reg_no)) || 0);
+            });
+          })()}
         />
       )}
 

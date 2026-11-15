@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
 import { downloadResultPdf } from '../lib/pdfGenerator';
+import { comparePublishedResults } from '../lib/tabulationEngine';
 import {
   X,
   Trophy,
@@ -39,10 +40,10 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
     async function fetchPublicItemResults() {
       setIsLoading(true);
       try {
-        // Query participations strictly for public columns
+        // Query participations including total_score for accurate score-based sorting
         const { data: participations, error: ptError } = await supabase
           .from('participations')
-          .select('reg_no, rank, grade, points')
+          .select('reg_no, rank, grade, points, total_score')
           .eq('item_code', item.code);
 
         if (ptError) throw ptError;
@@ -73,6 +74,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
             rank: pt.rank ? parseInt(pt.rank, 10) : null,
             grade: pt.grade || null,
             points: pt.points ? parseInt(pt.points, 10) : 0,
+            total_score: pt.total_score !== null && pt.total_score !== undefined ? Number(pt.total_score) : null,
             name: profile.name || `Participant #${pt.reg_no}`,
             unit: profile.unit || '—',
             madrasa: profile.madrasa || '',
@@ -82,19 +84,27 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
         // Filter only contenders with Rank OR Grade as per Sargolsav Result PDF standard
         const qualified = merged.filter((r) => r.rank !== null || r.grade !== null);
 
-        // Sort: Rank 1, 2, 3 first, then unranked graded by Grade (A, B, C), then reg_no
+        // Check if admin has set custom order for this item
+        const savedOrderJson = typeof window !== 'undefined' ? localStorage.getItem(`sargolsav_order_${item.code}`) : null;
+        let orderMap = null;
+        if (savedOrderJson) {
+          try {
+            const parsedOrder = JSON.parse(savedOrderJson);
+            orderMap = new Map();
+            parsedOrder.forEach((reg, idx) => orderMap.set(String(reg), idx));
+          } catch (e) {}
+        }
+
+        // Sort: Admin custom order -> Rank (1, 2, 3) -> Total Score descending -> Points descending -> Grade -> Reg No
         qualified.sort((a, b) => {
-          if (a.rank && b.rank) return a.rank - b.rank;
-          if (a.rank && !b.rank) return -1;
-          if (!a.rank && b.rank) return 1;
-
-          // Both unranked: sort by grade
-          const gradeOrder = { A: 1, B: 2, C: 3 };
-          const gA = gradeOrder[a.grade] || 99;
-          const gB = gradeOrder[b.grade] || 99;
-          if (gA !== gB) return gA - gB;
-
-          return parseInt(a.reg_no, 10) - parseInt(b.reg_no, 10);
+          if (orderMap) {
+            const hasA = orderMap.has(String(a.reg_no));
+            const hasB = orderMap.has(String(b.reg_no));
+            if (hasA && hasB && orderMap.get(String(a.reg_no)) !== orderMap.get(String(b.reg_no))) {
+              return orderMap.get(String(a.reg_no)) - orderMap.get(String(b.reg_no));
+            }
+          }
+          return comparePublishedResults(a, b);
         });
 
         setResults(qualified);

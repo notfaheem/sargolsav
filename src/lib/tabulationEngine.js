@@ -129,3 +129,70 @@ export function calculateScoresheet(rows = [], enforceMinEntryRule = false) {
     };
   });
 }
+
+/**
+ * Strict comparator for published results and awardees.
+ * Hierarchy:
+ * 1. Manual Display Order (display_order / sort_order if set by Admin)
+ * 2. Official Rank (rank 1, 2, 3 first, ascending)
+ * 3. Total Score (total_score descending): Higher total scores MUST come before lower scores
+ * 4. Points (points descending): Higher points first
+ * 5. Grade (A > B > C): Alphabetical grade order
+ * 6. Registration Number (reg_no ascending): Final tie-breaker
+ */
+export function comparePublishedResults(a, b) {
+  // 1. Manual Display Order (display_order / sort_order if present)
+  const orderA = a.sort_order ?? a.display_order;
+  const orderB = b.sort_order ?? b.display_order;
+  if (orderA !== undefined && orderA !== null && orderB !== undefined && orderB !== null) {
+    const numOrderA = Number(orderA);
+    const numOrderB = Number(orderB);
+    if (!isNaN(numOrderA) && !isNaN(numOrderB) && numOrderA !== numOrderB) {
+      return numOrderA - numOrderB;
+    }
+  }
+
+  // 2. Official Rank (rank 1, 2, 3 first, ascending)
+  const rankA = a.rank ? parseInt(a.rank, 10) : null;
+  const rankB = b.rank ? parseInt(b.rank, 10) : null;
+  if (rankA && rankB && rankA !== rankB) {
+    return rankA - rankB;
+  }
+  if (rankA && !rankB) return -1;
+  if (!rankA && rankB) return 1;
+
+  // 3. Total Score (total_score descending): Higher total scores MUST always come before lower total scores
+  const hasScoreA = a.total_score !== null && a.total_score !== undefined && a.total_score !== '';
+  const hasScoreB = b.total_score !== null && b.total_score !== undefined && b.total_score !== '';
+  if (hasScoreA && hasScoreB) {
+    const numScoreA = Number(a.total_score);
+    const numScoreB = Number(b.total_score);
+    if (!isNaN(numScoreA) && !isNaN(numScoreB) && numScoreA !== numScoreB) {
+      return numScoreB - numScoreA; // Descending
+    }
+  } else if (hasScoreA && !hasScoreB) {
+    return -1;
+  } else if (!hasScoreA && hasScoreB) {
+    return 1;
+  }
+
+  // 4. Points (points descending): Higher points first
+  const ptsA = a.points !== null && a.points !== undefined && a.points !== '' ? Number(a.points) : 0;
+  const ptsB = b.points !== null && b.points !== undefined && b.points !== '' ? Number(b.points) : 0;
+  if (!isNaN(ptsA) && !isNaN(ptsB) && ptsA !== ptsB) {
+    return ptsB - ptsA; // Descending
+  }
+
+  // 5. Grade (A > B > C): Alphabetical grade order
+  const gradeOrder = { A: 1, B: 2, C: 3 };
+  const gA = a.grade ? (gradeOrder[String(a.grade).trim().toUpperCase()] || 99) : 99;
+  const gB = b.grade ? (gradeOrder[String(b.grade).trim().toUpperCase()] || 99) : 99;
+  if (gA !== gB) {
+    return gA - gB;
+  }
+
+  // 6. Registration Number (reg_no ascending): Final tie-breaker
+  const regA = parseInt(a.reg_no, 10) || 0;
+  const regB = parseInt(b.reg_no, 10) || 0;
+  return regA - regB;
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import html2canvas from 'html2canvas';
+import { comparePublishedResults } from '../lib/tabulationEngine';
 import {
   Trophy,
   ArrowLeft,
@@ -108,11 +109,10 @@ export default function PosterMaker() {
     async function fetchItemWinners() {
       setIsLoadingWinners(true);
       try {
-        // Query participations strictly respecting public privacy:
-        // ONLY rank, grade, points, reg_no
+        // Query participations including total_score for accurate ranking
         const { data: partData, error: partErr } = await supabase
           .from('participations')
-          .select('reg_no, rank, grade, points')
+          .select('reg_no, rank, grade, points, total_score')
           .eq('item_code', selectedItemCode);
 
         if (partErr) throw partErr;
@@ -146,21 +146,33 @@ export default function PosterMaker() {
             rank: pt.rank ? parseInt(pt.rank, 10) : null,
             grade: pt.grade || null,
             points: pt.points ? parseInt(pt.points, 10) : 0,
+            total_score: pt.total_score !== null && pt.total_score !== undefined ? Number(pt.total_score) : null,
             name: profile.name || `Participant #${pt.reg_no}`,
             madrasa: profile.unit || '—', // Mapped to clean unit short-name
           };
         });
 
-        // Sort: Rank 1, 2, 3 first, then Graded (A, B, C)
+        // Check for admin custom order for this item
+        const savedOrderJson = typeof window !== 'undefined' ? localStorage.getItem(`sargolsav_order_${selectedItemCode}`) : null;
+        let orderMap = null;
+        if (savedOrderJson) {
+          try {
+            const parsedOrder = JSON.parse(savedOrderJson);
+            orderMap = new Map();
+            parsedOrder.forEach((reg, idx) => orderMap.set(String(reg), idx));
+          } catch (e) {}
+        }
+
+        // Sort: Admin custom order -> Rank (1, 2, 3) -> Total Score descending -> Points descending -> Grade -> Reg No
         merged.sort((a, b) => {
-          if (a.rank && b.rank) return a.rank - b.rank;
-          if (a.rank && !b.rank) return -1;
-          if (!a.rank && b.rank) return 1;
-          const gradeOrder = { A: 1, B: 2, C: 3 };
-          const gA = gradeOrder[a.grade] || 99;
-          const gB = gradeOrder[b.grade] || 99;
-          if (gA !== gB) return gA - gB;
-          return parseInt(a.reg_no, 10) - parseInt(b.reg_no, 10);
+          if (orderMap) {
+            const hasA = orderMap.has(String(a.reg_no));
+            const hasB = orderMap.has(String(b.reg_no));
+            if (hasA && hasB && orderMap.get(String(a.reg_no)) !== orderMap.get(String(b.reg_no))) {
+              return orderMap.get(String(a.reg_no)) - orderMap.get(String(b.reg_no));
+            }
+          }
+          return comparePublishedResults(a, b);
         });
 
         setWinners(merged);
