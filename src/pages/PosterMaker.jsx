@@ -658,12 +658,12 @@ export default function PosterMaker() {
                         SARGOLSAV 2026
                       </h2>
                       <span className="text-[8px] sm:text-[9px] font-extrabold text-[#EA580C] uppercase tracking-wider block mt-0.5">
-                        NILAMBUR SUB-DISTRICT
+                        NILAMBUR ZONE
                       </span>
                     </div>
                   </div>
                   <p className="text-[8px] sm:text-[9px] font-bold text-[#FDE68A] uppercase tracking-widest mt-1">
-                    MSM-CIER KERALA • AMAL COLLEGE, MYLADI
+                    MSM-CIER KERALA
                   </p>
                 </div>
 
@@ -939,7 +939,7 @@ export default function PosterMaker() {
                   marginTop: '4px',
                 }}
               >
-                NILAMBUR SUB-DISTRICT
+                NILAMBUR ZONE
               </div>
             </div>
           </div>
@@ -956,7 +956,7 @@ export default function PosterMaker() {
               lineHeight: '1.2',
             }}
           >
-            MSM-CIER KERALA • AMAL COLLEGE, MYLADI
+            MSM-CIER KERALA
           </div>
         </div>
 
