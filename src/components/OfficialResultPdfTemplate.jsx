@@ -118,7 +118,7 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                 colSpan={6}
                 className="border border-slate-300 py-8 text-center text-slate-500 italic"
               >
-                No awardees recorded for this item.
+                No participants recorded for this item.
               </td>
             </tr>
           ) : (
@@ -156,7 +156,7 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                       {getRankText(row.rank)}
                     </span>
                   ) : (
-                    ''
+                    <span className="text-slate-400 font-normal">-</span>
                   )}
                 </td>
               </tr>

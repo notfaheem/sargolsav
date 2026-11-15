@@ -59,10 +59,10 @@ export default function GlobalSearchPanel({
           const regNos = matchedP.map((p) => p.reg_no);
 
           // 2. Query participations strictly for public columns:
-          // NEVER fetch judge1, judge2, judge3, total_score, percentage, chest_no!
+          // Include total_score to detect completed evaluations
           const { data: ptData, error: ptError } = await supabase
             .from('participations')
-            .select('item_code, reg_no, rank, grade, points')
+            .select('item_code, reg_no, rank, grade, points, total_score')
             .in('reg_no', regNos);
 
           if (ptError) throw ptError;
@@ -307,35 +307,46 @@ export default function GlobalSearchPanel({
                                 {/* Status / Result */}
                                 <div className="shrink-0 text-right">
                                   {isItemPublished ? (
-                                    <div className="flex items-center gap-1">
-                                      {pt.rank && (
-                                        <span
-                                          className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
-                                            pt.rank === 1
-                                              ? 'bg-amber-400 text-amber-950'
-                                              : pt.rank === 2
-                                              ? 'bg-slate-300 text-slate-900'
-                                              : 'bg-[#F26430] text-white'
-                                          }`}
-                                        >
-                                          {pt.rank === 1 ? '1st' : pt.rank === 2 ? '2nd' : '3rd'}
+                                    pt.rank || pt.grade || (pt.points && pt.points > 0) ? (
+                                      <div className="flex items-center gap-1">
+                                        {pt.rank && (
+                                          <span
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
+                                              pt.rank === 1
+                                                ? 'bg-amber-400 text-amber-950'
+                                                : pt.rank === 2
+                                                ? 'bg-slate-300 text-slate-900'
+                                                : 'bg-[#F26430] text-white'
+                                            }`}
+                                          >
+                                            {pt.rank === 1 ? '1st' : pt.rank === 2 ? '2nd' : '3rd'}
+                                          </span>
+                                        )}
+                                        {pt.grade && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white text-emerald-700 border border-emerald-300">
+                                            Gr. {pt.grade}
+                                          </span>
+                                        )}
+                                        {pt.points > 0 && (
+                                          <span className="font-mono font-bold text-[11px] text-blue-700">
+                                            +{pt.points} pts
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1">
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                          Participated
                                         </span>
-                                      )}
-                                      {pt.grade && (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white text-emerald-700 border border-emerald-300">
-                                          Gr. {pt.grade}
+                                        <span className="font-mono text-[10px] text-slate-400">
+                                          0 pts
                                         </span>
-                                      )}
-                                      {pt.points > 0 && (
-                                        <span className="font-mono font-bold text-[11px] text-blue-700">
-                                          +{pt.points} pts
-                                        </span>
-                                      )}
-                                    </div>
+                                      </div>
+                                    )
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
                                       <Clock className="w-2.5 h-2.5 text-slate-400" />
-                                      Awaiting
+                                      Not announced yet
                                     </span>
                                   )}
                                 </div>

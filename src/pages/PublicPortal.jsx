@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AnnouncementBar from '../components/AnnouncementBar';
 import Header from '../components/Header';
@@ -14,10 +14,22 @@ import DeveloperFooter from '../components/DeveloperFooter';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers, Clock, Eye } from 'lucide-react';
 
 export default function PublicPortal() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('results');
   const [selectedCategory, setSelectedCategory] = useState('KIDS');
   const [showPublishedOnly, setShowPublishedOnly] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return searchParams.get('q') || searchParams.get('reg') || searchParams.get('search') || '';
+  });
+
+  // Handle URL search queries (e.g. from QR codes or direct links)
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('reg') || searchParams.get('search');
+    if (q) {
+      setSearchQuery(q);
+      setActiveTab('results');
+    }
+  }, [searchParams]);
 
   // Selected item for Result View Modal (published result or awaiting notice)
   const [selectedModalItem, setSelectedModalItem] = useState(null);

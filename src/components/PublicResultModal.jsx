@@ -43,7 +43,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
         // Query participations including total_score for accurate score-based sorting
         const { data: participations, error: ptError } = await supabase
           .from('participations')
-          .select('reg_no, rank, grade, points, total_score')
+          .select('reg_no, rank, grade, points, total_score, judge1, judge2, judge3')
           .eq('item_code', item.code);
 
         if (ptError) throw ptError;
@@ -74,15 +74,26 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
             rank: pt.rank ? parseInt(pt.rank, 10) : null,
             grade: pt.grade || null,
             points: pt.points ? parseInt(pt.points, 10) : 0,
-            total_score: pt.total_score !== null && pt.total_score !== undefined ? Number(pt.total_score) : null,
+            total_score: pt.total_score !== null && pt.total_score !== undefined && pt.total_score !== '' ? Number(pt.total_score) : null,
+            judge1: pt.judge1,
+            judge2: pt.judge2,
+            judge3: pt.judge3,
             name: profile.name || `Participant #${pt.reg_no}`,
             unit: profile.unit || '—',
             madrasa: profile.madrasa || '',
           };
         });
 
-        // Filter only contenders with Rank OR Grade as per Sargolsav Result PDF standard
-        const qualified = merged.filter((r) => r.rank !== null || r.grade !== null);
+        // Include all participants who have rank, grade, OR total_score > 0 (or where judges entered marks)
+        const qualified = merged.filter((r) => {
+          const hasRank = r.rank !== null && r.rank !== undefined && r.rank !== '';
+          const hasGrade = r.grade !== null && r.grade !== undefined && r.grade !== '';
+          const hasScore = r.total_score !== null && r.total_score > 0;
+          const hasJudges = (r.judge1 !== null && r.judge1 !== undefined && r.judge1 !== '') ||
+                            (r.judge2 !== null && r.judge2 !== undefined && r.judge2 !== '') ||
+                            (r.judge3 !== null && r.judge3 !== undefined && r.judge3 !== '');
+          return hasRank || hasGrade || hasScore || hasJudges;
+        });
 
         // Check if admin has set custom order for this item
         const savedOrderJson = typeof window !== 'undefined' ? localStorage.getItem(`sargolsav_order_${item.code}`) : null;
@@ -470,13 +481,13 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                     </h3>
                   </div>
                   <span className="text-[11px] text-slate-400 print:hidden">
-                    Ranked & Graded Participants
+                    All Contestants & Awardees
                   </span>
                 </div>
 
                 {results.length === 0 ? (
                   <div className="py-8 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
-                    <p className="text-xs font-semibold">No participants achieved grade or rank in this item.</p>
+                    <p className="text-xs font-semibold">No participants recorded for this item yet.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-2xl border border-slate-200 print:border-slate-800 print:rounded-none">
@@ -532,7 +543,9 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                                   Grade {row.grade}
                                 </span>
                               ) : (
-                                <span className="text-slate-300">-</span>
+                                <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                  -
+                                </span>
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -549,7 +562,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                                   {getRankText(row.rank)}
                                 </span>
                               ) : (
-                                <span className="text-slate-300">-</span>
+                                <span className="text-slate-400 font-mono text-xs">-</span>
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-center font-mono font-bold text-xs text-[#1B254B]">

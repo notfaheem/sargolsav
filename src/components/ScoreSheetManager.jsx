@@ -1264,7 +1264,9 @@ export default function ScoreSheetManager({ onShowToast }) {
           containerId={`admin-result-pdf-${currentItem.code}`}
           item={currentItem}
           results={(() => {
-            const qualified = rows.filter((r) => r.rank || r.grade);
+            const qualified = rows.filter(
+              (r) => r.rank || r.grade || (r.total_score !== null && Number(r.total_score) > 0)
+            );
             const rowsOrderMap = new Map();
             rows.forEach((r, idx) => rowsOrderMap.set(String(r.reg_no), idx));
             return [...qualified].sort((a, b) => {

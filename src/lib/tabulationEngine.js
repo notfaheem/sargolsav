@@ -161,7 +161,14 @@ export function comparePublishedResults(a, b) {
   if (rankA && !rankB) return -1;
   if (!rankA && rankB) return 1;
 
-  // 3. Total Score (total_score descending): Higher total scores MUST always come before lower total scores
+  // 3. Graded contenders vs Un-graded contenders
+  // Any participant with an official rank or grade comes before an un-graded/un-ranked participant
+  const isGradedOrRankedA = Boolean(rankA || (a.grade && String(a.grade).trim()));
+  const isGradedOrRankedB = Boolean(rankB || (b.grade && String(b.grade).trim()));
+  if (isGradedOrRankedA && !isGradedOrRankedB) return -1;
+  if (!isGradedOrRankedA && isGradedOrRankedB) return 1;
+
+  // 4. Total Score (total_score descending): Higher total scores MUST always come before lower total scores
   const hasScoreA = a.total_score !== null && a.total_score !== undefined && a.total_score !== '';
   const hasScoreB = b.total_score !== null && b.total_score !== undefined && b.total_score !== '';
   if (hasScoreA && hasScoreB) {
