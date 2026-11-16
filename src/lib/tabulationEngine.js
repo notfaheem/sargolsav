@@ -22,6 +22,32 @@
  *   participant receives Grade only with 0 total points (no rank points, no grade points).
  */
 
+export function getGradePoints(grade) {
+  if (!grade) return 0;
+  const g = String(grade).trim().toUpperCase();
+  if (g === 'A') return 5;
+  if (g === 'B') return 3;
+  if (g === 'C') return 1;
+  return 0;
+}
+
+export function getPlacePoints(rank) {
+  if (!rank) return 0;
+  const r = parseInt(rank, 10);
+  if (r === 1) return 5;
+  if (r === 2) return 3;
+  if (r === 3) return 1;
+  return 0;
+}
+
+export function getTotalIndividualPoints(rank, grade) {
+  return getPlacePoints(rank) + getGradePoints(grade);
+}
+
+export function getMadrasaResultPoints(rank, grade) {
+  return getGradePoints(grade);
+}
+
 export function parseJudgeScore(val) {
   if (val === null || val === undefined || val === '') return null;
   const num = parseFloat(String(val).trim());
@@ -31,9 +57,9 @@ export function parseJudgeScore(val) {
 
 export function computeGrade(percentage) {
   if (percentage === null || percentage === undefined) return { grade: null, gradePoints: 0 };
-  if (percentage >= 75) return { grade: 'A', gradePoints: 5 };
-  if (percentage >= 60) return { grade: 'B', gradePoints: 3 };
-  if (percentage >= 50) return { grade: 'C', gradePoints: 1 };
+  if (percentage >= 75) return { grade: 'A', gradePoints: getGradePoints('A') };
+  if (percentage >= 60) return { grade: 'B', gradePoints: getGradePoints('B') };
+  if (percentage >= 50) return { grade: 'C', gradePoints: getGradePoints('C') };
   return { grade: null, gradePoints: 0 };
 }
 
@@ -119,13 +145,19 @@ export function calculateScoresheet(rows = [], enforceMinEntryRule = false) {
     }
 
     const rankInfo = scoreToRankMap.get(row.total_score) || { rank: null, rankPoints: 0 };
-    const totalPoints = (row.gradePoints || 0) + (rankInfo.rankPoints || 0);
+    const gradePoints = getGradePoints(row.grade);
+    const placePoints = getPlacePoints(rankInfo.rank);
+    // General Result Points display & Madrasa calculations: ONLY grade points (5, 3, 1, or 0)
+    const resultPoints = getMadrasaResultPoints(rankInfo.rank, row.grade);
+    const individualPoints = getTotalIndividualPoints(rankInfo.rank, row.grade);
 
     return {
       ...row,
       rank: rankInfo.rank,
-      rankPoints: rankInfo.rankPoints,
-      points: totalPoints,
+      rankPoints: placePoints,
+      gradePoints: gradePoints,
+      points: resultPoints,
+      individualPoints: individualPoints,
     };
   });
 }

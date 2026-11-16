@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Award, CheckCircle2, AlertCircle, Loader2, Sparkles, SlidersHorizontal, Printer } from 'lucide-react';
 import ScoreSheetPdfTemplate from './ScoreSheetPdfTemplate';
 import { downloadScoreSheetPdf } from '../lib/pdfGenerator';
+import { getMadrasaResultPoints } from '../lib/tabulationEngine';
 
 export default function PublishPreviewModal({
   isOpen,
@@ -20,11 +21,14 @@ export default function PublishPreviewModal({
   // Apply overrides to rows for preview
   const previewRows = rows.map((r) => {
     const o = overrides[r.reg_no] || {};
+    const grade = o.grade !== undefined ? o.grade : r.grade;
+    const rank = o.rank !== undefined ? o.rank : r.rank;
+    const points = o.points !== undefined ? o.points : (r.points !== undefined ? r.points : getMadrasaResultPoints(rank, grade));
     return {
       ...r,
-      grade: o.grade !== undefined ? o.grade : r.grade,
-      rank: o.rank !== undefined ? o.rank : r.rank,
-      points: o.points !== undefined ? o.points : r.points,
+      grade,
+      rank,
+      points,
     };
   });
 

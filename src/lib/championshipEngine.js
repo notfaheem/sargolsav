@@ -1,3 +1,10 @@
+import {
+  getGradePoints,
+  getPlacePoints,
+  getTotalIndividualPoints,
+  getMadrasaResultPoints,
+} from './tabulationEngine';
+
 /**
  * Championship & Standings Calculation Engine for Sargolsav 2026.
  *
@@ -63,7 +70,7 @@ export function computeUnitStandings(participations = [], participants = [], ite
     if (item.mode === 'GROUP') {
       const madrasaKey = madrasa || unit;
       const key = `${item.code}__${madrasaKey}`;
-      const pts = Number(part.points) || 0;
+      const pts = getMadrasaResultPoints(part.rank, part.grade);
       if (!groupScoresMap.has(key)) {
         groupScoresMap.set(key, {
           itemCode: item.code,
@@ -85,13 +92,14 @@ export function computeUnitStandings(participations = [], participants = [], ite
         }
       }
     } else {
+      const pts = getMadrasaResultPoints(part.rank, part.grade);
       singleEntries.push({
         ...part,
         item,
         unit,
         madrasa,
         studentName: student?.name || 'Unknown',
-        points: Number(part.points) || 0,
+        points: pts,
       });
     }
   });
@@ -269,10 +277,10 @@ export function computeIndividualChampionship(participations = [], participants 
     if (item.category !== category) return;
 
     const stats = getStudentStats(part.reg_no);
-    const pts = Number(part.points) || 0;
+    const individualPts = getTotalIndividualPoints(part.rank, part.grade);
 
     if (item.mode === 'SINGLE') {
-      stats.singlePoints += pts;
+      stats.singlePoints += individualPts;
       if (part.rank === 1) stats.rank1Count += 1;
       if (part.rank === 2) stats.rank2Count += 1;
       if (part.rank === 3) stats.rank3Count += 1;
@@ -280,14 +288,14 @@ export function computeIndividualChampionship(participations = [], participants 
       if (part.grade === 'B') stats.gradeBCount += 1;
       if (part.grade === 'C') stats.gradeCCount += 1;
 
-      if (pts > 0 || part.rank || part.grade) {
+      if (individualPts > 0 || part.rank || part.grade) {
         stats.singleBreakdown.push({
           itemCode: item.code,
           itemNameMl: item.name_ml,
           itemNameEn: item.name_en,
           rank: part.rank,
           grade: part.grade,
-          points: pts,
+          points: individualPts,
         });
       }
     } else if (item.mode === 'GROUP') {

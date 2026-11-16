@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { getGradePoints } from '../lib/tabulationEngine';
 import {
   User,
   Building2,
@@ -169,7 +170,7 @@ export default function GlobalSearchPanel({
                 pts.forEach((pt) => {
                   const itm = itemsMap.get(pt.item_code);
                   if (itm?.is_published) {
-                    unitPoints += pt.points || 0;
+                    unitPoints += getGradePoints(pt.grade);
                     if (pt.rank || pt.grade) unitWinnersCount++;
                   }
                 });
@@ -226,10 +227,10 @@ export default function GlobalSearchPanel({
               {participants.map((student) => {
                 const pts = participationsByReg.get(String(student.reg_no)) || [];
 
-                // Calculate total individual points from published items
+                // Calculate total points from published items (grade points only)
                 const totalPoints = pts.reduce((sum, pt) => {
                   const itm = itemsMap.get(pt.item_code);
-                  return itm?.is_published ? sum + (pt.points || 0) : sum;
+                  return itm?.is_published ? sum + getGradePoints(pt.grade) : sum;
                 }, 0);
 
                 return (
@@ -327,9 +328,9 @@ export default function GlobalSearchPanel({
                                             Gr. {pt.grade}
                                           </span>
                                         )}
-                                        {pt.points > 0 && (
+                                        {getGradePoints(pt.grade) > 0 && (
                                           <span className="font-mono font-bold text-[11px] text-blue-700">
-                                            +{pt.points} pts
+                                            +{getGradePoints(pt.grade)} pts
                                           </span>
                                         )}
                                       </div>

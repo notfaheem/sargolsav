@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
 import { downloadResultPdf } from '../lib/pdfGenerator';
-import { comparePublishedResults } from '../lib/tabulationEngine';
+import { comparePublishedResults, getMadrasaResultPoints } from '../lib/tabulationEngine';
 import {
   X,
   Trophy,
@@ -69,11 +69,13 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
 
         const merged = participations.map((pt) => {
           const profile = pMap.get(String(pt.reg_no)) || {};
+          const rank = pt.rank ? parseInt(pt.rank, 10) : null;
+          const grade = pt.grade || null;
           return {
             reg_no: pt.reg_no,
-            rank: pt.rank ? parseInt(pt.rank, 10) : null,
-            grade: pt.grade || null,
-            points: pt.points ? parseInt(pt.points, 10) : 0,
+            rank,
+            grade,
+            points: getMadrasaResultPoints(rank, grade),
             total_score: pt.total_score !== null && pt.total_score !== undefined && pt.total_score !== '' ? Number(pt.total_score) : null,
             judge1: pt.judge1,
             judge2: pt.judge2,
@@ -378,7 +380,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             <span />
                           )}
                           <span className="font-mono font-extrabold text-xs text-amber-950 bg-amber-200/70 px-2 py-0.5 rounded-md">
-                            +{winner.points} pts
+                            {winner.points > 0 ? `+${winner.points} pts` : '0 pts'}
                           </span>
                         </div>
                       </div>
@@ -420,7 +422,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             <span />
                           )}
                           <span className="font-mono font-extrabold text-xs text-slate-900 bg-slate-200/80 px-2 py-0.5 rounded-md">
-                            +{winner.points} pts
+                            {winner.points > 0 ? `+${winner.points} pts` : '0 pts'}
                           </span>
                         </div>
                       </div>
@@ -462,7 +464,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                             <span />
                           )}
                           <span className="font-mono font-extrabold text-xs text-orange-950 bg-orange-200/70 px-2 py-0.5 rounded-md">
-                            +{winner.points} pts
+                            {winner.points > 0 ? `+${winner.points} pts` : '0 pts'}
                           </span>
                         </div>
                       </div>
