@@ -44,44 +44,65 @@ export default function PublicPortal() {
   // Global Announcement Popup Modal state
   const [showPopup, setShowPopup] = useState(false);
   const [popupData, setPopupData] = useState(null);
+  const [activeContentHash, setActiveContentHash] = useState('');
 
   // Items state
   const [items, setItems] = useState([]);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState(null);
 
-  // Handle popup close & dismissal
-  const handleClosePopup = () => {
-    setShowPopup(false);
-    localStorage.setItem('sargolsav_popup_dismissed', 'true');
+  // Helper to generate a content hash from heading and message
+  const getPopupContentHash = (heading, message) => {
+    const str = `${heading || ''}:::${message || ''}`.trim();
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
   };
 
-  // Evaluate Popup Frequency Rule
+  // Handle popup close & dismissal per content version
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    if (activeContentHash) {
+      localStorage.setItem(`sargolsav_popup_dismissed_${activeContentHash}`, 'true');
+    }
+  };
+
+  // Evaluate Popup Frequency Rule & Content Versioning
   const evaluatePopupTrigger = useCallback((config) => {
     if (!config || !config.is_popup_active) return;
 
-    // Increment visit count in localStorage
-    const countKey = 'sargolsav_visit_count';
-    const rawCount = parseInt(localStorage.getItem(countKey) || '0', 10);
-    const visitCount = (isNaN(rawCount) ? 0 : rawCount) + 1;
-    localStorage.setItem(countKey, String(visitCount));
+    // Increment sargolsav_popup_visits in localStorage on page load
+    const countKey = 'sargolsav_popup_visits';
+    const rawVisits = parseInt(localStorage.getItem(countKey) || '0', 10);
+    const visits = (isNaN(rawVisits) ? 0 : rawVisits) + 1;
+    localStorage.setItem(countKey, String(visits));
 
-    const isDismissed = localStorage.getItem('sargolsav_popup_dismissed') === 'true';
+    const contentHash = getPopupContentHash(config.popup_heading, config.popup_message);
+    setActiveContentHash(contentHash);
+
     const freq =
       typeof config.popup_frequency === 'number'
         ? config.popup_frequency
-        : parseInt(config.popup_frequency, 10) || 0;
+        : parseInt(config.popup_frequency, 10) >= 0
+        ? parseInt(config.popup_frequency, 10)
+        : 1;
+
+    const isDismissed =
+      localStorage.getItem(`sargolsav_popup_dismissed_${contentHash}`) === 'true';
 
     let shouldShow = false;
     if (freq === 0) {
-      // 0 = show once only across lifetime
+      // 0 = show once forever per content version
       if (!isDismissed) shouldShow = true;
     } else if (freq === 1) {
-      // 1 = show every visit / reload
+      // 1 = show on every page load
       shouldShow = true;
     } else if (freq > 1) {
-      // Show every Nth visit (e.g. 1st, 4th, 7th when freq = 3)
-      if (visitCount % freq === 1) {
+      // Show when (visits % popup_frequency) === 1
+      if (visits % freq === 1) {
         shouldShow = true;
       }
     }
@@ -110,27 +131,17 @@ export default function PublicPortal() {
           .eq('id', 1)
           .single();
 
-        let popupConfig = null;
-
         if (error) {
           console.warn('Error fetching settings from Supabase:', error.message);
-          // Fallback check for local storage backup if columns migration is pending
-          try {
-            const localData = localStorage.getItem('sargolsav_admin_popup_settings');
-            if (localData) popupConfig = JSON.parse(localData);
-          } catch (e) {
-            // ignore
-          }
-        } else if (data) {
+          return;
+        }
+
+        if (data) {
           setSettings({
             announcement_text: data.announcement_text || '',
             show_announcement: Boolean(data.show_announcement),
           });
-          popupConfig = data;
-        }
-
-        if (popupConfig) {
-          evaluatePopupTrigger(popupConfig);
+          evaluatePopupTrigger(data);
         }
       } catch (err) {
         console.warn('Error in fetchPublicSettings:', err);

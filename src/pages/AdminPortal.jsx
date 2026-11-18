@@ -95,58 +95,21 @@ export default function AdminPortal() {
       }
 
       if (data) {
-        let localPopup = {};
-        try {
-          const stored = localStorage.getItem('sargolsav_admin_popup_settings');
-          if (stored) localPopup = JSON.parse(stored);
-        } catch (e) {
-          // ignore
-        }
-
         setSettings({
           id: data.id || 1,
           announcement_text: data.announcement_text || '',
           show_announcement: Boolean(data.show_announcement),
           enforce_min_entry_rule: Boolean(data.enforce_min_entry_rule),
           admin_pin: data.admin_pin || '2026',
-          is_popup_active:
-            data.is_popup_active !== undefined
-              ? Boolean(data.is_popup_active)
-              : Boolean(localPopup.is_popup_active),
-          popup_heading:
-            data.popup_heading !== undefined
-              ? data.popup_heading || ''
-              : localPopup.popup_heading || '',
-          popup_message:
-            data.popup_message !== undefined
-              ? data.popup_message || ''
-              : localPopup.popup_message || '',
-          popup_image_url:
-            data.popup_image_url !== undefined
-              ? data.popup_image_url || ''
-              : localPopup.popup_image_url || '',
-          popup_btn1_text:
-            data.popup_btn1_text !== undefined
-              ? data.popup_btn1_text || ''
-              : localPopup.popup_btn1_text || '',
-          popup_btn1_url:
-            data.popup_btn1_url !== undefined
-              ? data.popup_btn1_url || ''
-              : localPopup.popup_btn1_url || '',
-          popup_btn2_text:
-            data.popup_btn2_text !== undefined
-              ? data.popup_btn2_text || ''
-              : localPopup.popup_btn2_text || '',
-          popup_btn2_url:
-            data.popup_btn2_url !== undefined
-              ? data.popup_btn2_url || ''
-              : localPopup.popup_btn2_url || '',
-          popup_frequency:
-            data.popup_frequency !== undefined
-              ? Number(data.popup_frequency)
-              : localPopup.popup_frequency !== undefined
-              ? Number(localPopup.popup_frequency)
-              : 1,
+          is_popup_active: Boolean(data.is_popup_active),
+          popup_heading: data.popup_heading || '',
+          popup_message: data.popup_message || '',
+          popup_image_url: data.popup_image_url || '',
+          popup_btn1_text: data.popup_btn1_text || '',
+          popup_btn1_url: data.popup_btn1_url || '',
+          popup_btn2_text: data.popup_btn2_text || '',
+          popup_btn2_url: data.popup_btn2_url || '',
+          popup_frequency: typeof data.popup_frequency === 'number' ? data.popup_frequency : 1,
         });
         logger.success('SETTINGS_FETCH', 'Loaded festival configuration row (id=1)');
       }
@@ -344,6 +307,55 @@ export default function AdminPortal() {
       logger.error('SETTINGS_UPDATE', `Save failed: ${err.message}`);
       setToast({
         message: 'Failed to save settings. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Dedicated Save Action for Global Popup Notice
+  const handleSavePopupSettings = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        is_popup_active: Boolean(settings.is_popup_active),
+        popup_heading: settings.popup_heading ? settings.popup_heading.trim() : null,
+        popup_message: settings.popup_message ? settings.popup_message.trim() : null,
+        popup_image_url: settings.popup_image_url ? settings.popup_image_url.trim() : null,
+        popup_btn1_text: settings.popup_btn1_text ? settings.popup_btn1_text.trim() : null,
+        popup_btn1_url: settings.popup_btn1_url ? settings.popup_btn1_url.trim() : null,
+        popup_btn2_text: settings.popup_btn2_text ? settings.popup_btn2_text.trim() : null,
+        popup_btn2_url: settings.popup_btn2_url ? settings.popup_btn2_url.trim() : null,
+        popup_frequency: parseInt(settings.popup_frequency, 10) >= 0 ? parseInt(settings.popup_frequency, 10) : 1,
+      };
+
+      const { error } = await supabase
+        .from('settings')
+        .update(payload)
+        .eq('id', 1);
+
+      if (error) {
+        throw error;
+      }
+
+      logger.success('POPUP_SETTINGS_UPDATE', 'Updated global popup notice settings in Supabase', payload);
+
+      setToast({
+        message: 'Popup settings saved successfully!',
+        type: 'success',
+      });
+      setTimeout(() => {
+        setToast({ message: '', type: 'success' });
+      }, 3500);
+    } catch (err) {
+      console.error('Error saving popup settings:', err);
+      logger.error('POPUP_SETTINGS_UPDATE', `Save failed: ${err.message}`);
+      setToast({
+        message: `Failed to save popup settings: ${err.message || 'Please check network and try again.'}`,
         type: 'error',
       });
     } finally {
@@ -721,7 +733,7 @@ export default function AdminPortal() {
               </form>
             </div>
 
-            {/* Global Popup Settings Card */}
+            {/* Global Popup Notice Card */}
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-100 gap-4">
                 <div>
@@ -730,11 +742,11 @@ export default function AdminPortal() {
                       <Bell className="w-5 h-5" />
                     </span>
                     <h2 className="text-lg sm:text-xl font-extrabold text-[#1B254B]">
-                      Global Popup Announcement Modal
+                      Global Popup Notice
                     </h2>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Display a high-priority modal to public portal visitors with frequency controls, rich imagery, and action buttons.
+                    Manage the high-priority announcement modal displayed on the public portal (/) with frequency controls and action buttons.
                   </p>
                 </div>
 
@@ -752,14 +764,14 @@ export default function AdminPortal() {
               </div>
 
               <div className="mt-6 space-y-6">
-                {/* 1. Enable Public Popup Toggle Switch */}
+                {/* 1. Toggle switch: Enable Public Popup (is_popup_active) */}
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80">
                   <div className="space-y-0.5 pr-4">
                     <label
                       htmlFor="is_popup_active"
                       className="text-sm font-bold text-[#1B254B] cursor-pointer flex items-center gap-2"
                     >
-                      <span>Enable Public Popup Modal</span>
+                      <span>Enable Public Popup</span>
                       {settings.is_popup_active ? (
                         <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
                           Active Live
@@ -771,7 +783,7 @@ export default function AdminPortal() {
                       )}
                     </label>
                     <p className="text-xs text-slate-600">
-                      When turned ON, visitors on the public portal will be shown this announcement modal according to the frequency below.
+                      When turned ON, visitors on the public portal will be shown this announcement modal according to the frequency rule.
                     </p>
                   </div>
                   <button
@@ -797,7 +809,7 @@ export default function AdminPortal() {
                   </button>
                 </div>
 
-                {/* 2. Popup Heading */}
+                {/* 2. Text Input: Popup Heading (popup_heading) */}
                 <div className="space-y-2">
                   <label htmlFor="popup_heading" className="text-sm font-bold text-[#1B254B] block">
                     Popup Heading
@@ -814,10 +826,10 @@ export default function AdminPortal() {
                   />
                 </div>
 
-                {/* 3. Popup Message (Textarea) */}
+                {/* 3. Textarea: Popup Message (popup_message) */}
                 <div className="space-y-2">
                   <label htmlFor="popup_message" className="text-sm font-bold text-[#1B254B] block">
-                    Announcement Message Body
+                    Popup Message
                   </label>
                   <textarea
                     id="popup_message"
@@ -831,10 +843,10 @@ export default function AdminPortal() {
                   />
                 </div>
 
-                {/* 4. Header Image (URL or Local Upload with Preview) */}
+                {/* 4. Text Input: Header Image URL (Optional) (popup_image_url) */}
                 <div className="space-y-3">
-                  <label className="text-sm font-bold text-[#1B254B] flex items-center justify-between">
-                    <span>Header Image (Optional)</span>
+                  <label htmlFor="popup_image_url" className="text-sm font-bold text-[#1B254B] flex items-center justify-between">
+                    <span>Header Image URL (Optional)</span>
                     <span className="text-xs font-normal text-slate-500">Renders flush across top of modal</span>
                   </label>
 
@@ -842,6 +854,7 @@ export default function AdminPortal() {
                     <div>
                       <div className="relative">
                         <input
+                          id="popup_image_url"
                           type="url"
                           value={settings.popup_image_url}
                           onChange={(e) =>
@@ -851,7 +864,7 @@ export default function AdminPortal() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-[#1B254B] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B] focus:border-transparent transition-all"
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1">Or select a photo from your computer/phone:</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Or select a file from your device:</p>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -879,30 +892,35 @@ export default function AdminPortal() {
                     </div>
                   </div>
 
-                  {/* Image Preview Box */}
+                  {/* Small Live Image Preview */}
                   {settings.popup_image_url && (
-                    <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 max-w-sm max-h-44 relative shadow-inner">
-                      <img
-                        src={settings.popup_image_url}
-                        alt="Popup Header Preview"
-                        className="w-full h-44 object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                    <div className="mt-2">
+                      <p className="text-xs font-semibold text-slate-500 mb-1">Image Preview:</p>
+                      <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100 max-w-xs relative shadow-inner">
+                        <img
+                          src={settings.popup_image_url}
+                          alt="Header Preview"
+                          className="w-full max-h-36 object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* 5. Frequency Controls */}
+                {/* 5. Number Input: Display Frequency (popup_frequency) */}
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                       <label htmlFor="popup_frequency" className="text-sm font-bold text-[#1B254B]">
-                        Display Frequency Rule
+                        Display Frequency
                       </label>
-                      <p className="text-xs text-slate-500">
-                        Controls how often visitors see this popup on the public portal.
+                      <p className="text-xs text-slate-600 font-medium mt-0.5">
+                        <code className="text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded text-[11px]">
+                          0 = Only once per device | 1 = Every visit | 3 = Every 3rd visit
+                        </code>
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -916,7 +934,7 @@ export default function AdminPortal() {
                         onChange={(e) =>
                           setSettings((prev) => ({
                             ...prev,
-                            popup_frequency: parseInt(e.target.value, 10) || 0,
+                            popup_frequency: parseInt(e.target.value, 10) >= 0 ? parseInt(e.target.value, 10) : 0,
                           }))
                         }
                         className="w-20 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-center text-sm font-bold text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-[#1B254B]"
@@ -933,8 +951,8 @@ export default function AdminPortal() {
                           : 'bg-white border-slate-200 text-slate-600'
                       }`}
                     >
-                      <p className="font-bold">0 = Show Once</p>
-                      <p className="text-[11px] text-slate-500">Shows once, never again after dismissed.</p>
+                      <p className="font-bold">0 = Only once per device</p>
+                      <p className="text-[11px] text-slate-500">Shows once forever per announcement version.</p>
                     </div>
                     <div
                       className={`p-2 rounded-xl border transition-all ${
@@ -943,8 +961,8 @@ export default function AdminPortal() {
                           : 'bg-white border-slate-200 text-slate-600'
                       }`}
                     >
-                      <p className="font-bold">1 = Show Every Time</p>
-                      <p className="text-[11px] text-slate-500">Appears on every site reload / visit.</p>
+                      <p className="font-bold">1 = Every visit</p>
+                      <p className="text-[11px] text-slate-500">Shows on every page visit / refresh.</p>
                     </div>
                     <div
                       className={`p-2 rounded-xl border transition-all ${
@@ -953,22 +971,22 @@ export default function AdminPortal() {
                           : 'bg-white border-slate-200 text-slate-600'
                       }`}
                     >
-                      <p className="font-bold">{settings.popup_frequency || 3} = Every Nth Visit</p>
+                      <p className="font-bold">{settings.popup_frequency || 3} = Every Nth visit</p>
                       <p className="text-[11px] text-slate-500">
-                        Appears every {settings.popup_frequency || 3} visits (1st, {Number(settings.popup_frequency || 3) + 1}th...).
+                        Shows every {settings.popup_frequency || 3} visits (1st, {Number(settings.popup_frequency || 3) + 1}th...).
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* 6. Action Buttons (Button 1 & Button 2) */}
+                {/* 6. Two Button Config rows */}
                 <div className="space-y-4 pt-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Call-to-Action Buttons (Optional)
+                    Two Button Config (Optional Actions)
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Button 1 (Primary - Purple/Indigo) */}
+                    {/* Row 1: Button 1 Text & Button 1 Link URL */}
                     <div className="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-3">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
                         <span className="w-2 h-2 rounded-full bg-indigo-600" />
@@ -976,7 +994,7 @@ export default function AdminPortal() {
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Button Text
+                          Button 1 Text
                         </label>
                         <input
                           type="text"
@@ -990,7 +1008,7 @@ export default function AdminPortal() {
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Target URL or Internal Path
+                          Button 1 Link URL
                         </label>
                         <input
                           type="text"
@@ -1004,7 +1022,7 @@ export default function AdminPortal() {
                       </div>
                     </div>
 
-                    {/* Button 2 (Secondary - Neutral) */}
+                    {/* Row 2: Button 2 Text & Button 2 Link URL */}
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                         <span className="w-2 h-2 rounded-full bg-slate-400" />
@@ -1012,7 +1030,7 @@ export default function AdminPortal() {
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Button Text
+                          Button 2 Text
                         </label>
                         <input
                           type="text"
@@ -1026,7 +1044,7 @@ export default function AdminPortal() {
                       </div>
                       <div>
                         <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Target URL or Internal Path
+                          Button 2 Link URL
                         </label>
                         <input
                           type="text"
@@ -1042,7 +1060,7 @@ export default function AdminPortal() {
                   </div>
                 </div>
 
-                {/* Save and Preview Action Row */}
+                {/* Save Action Row: 💾 Save Popup Settings */}
                 <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
@@ -1055,7 +1073,7 @@ export default function AdminPortal() {
 
                   <button
                     type="button"
-                    onClick={handleSaveSettings}
+                    onClick={handleSavePopupSettings}
                     disabled={isSubmitting || isLoadingSettings}
                     className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-[#1B254B] text-white hover:bg-navy-800 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
@@ -1066,8 +1084,7 @@ export default function AdminPortal() {
                       </>
                     ) : (
                       <>
-                        <Save className="w-4 h-4 text-[#F26430]" />
-                        <span>Save Popup Settings</span>
+                        <span>💾 Save Popup Settings</span>
                       </>
                     )}
                   </button>
