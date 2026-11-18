@@ -1,4 +1,4 @@
-import { toCanvas } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 /**
@@ -27,13 +27,17 @@ export async function downloadResultPdf(containerId, itemCode) {
     })
   );
 
-  const canvas = await toCanvas(element, {
-    pixelRatio: 2, // 2x DPI for ultra-sharp typography
-    cacheBust: true,
+  const canvas = await html2canvas(element, {
+    scale: 2, // 2x DPI for ultra-sharp typography
+    useCORS: true,
+    logging: false,
     backgroundColor: '#ffffff',
+    windowWidth: 900,
+    scrollX: 0,
+    scrollY: 0,
   });
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.98);
+  const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -48,14 +52,14 @@ export async function downloadResultPdf(containerId, itemCode) {
   let position = 0;
 
   // Add first page
-  pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
   heightLeft -= pdfPageHeight;
 
   // Handle multi-page if entries list is long
   while (heightLeft > 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
     heightLeft -= pdfPageHeight;
   }
 
@@ -89,13 +93,17 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
     })
   );
 
-  const canvas = await toCanvas(element, {
-    pixelRatio: 2, // 2x DPI for ultra-sharp typography
-    cacheBust: true,
+  const canvas = await html2canvas(element, {
+    scale: 2, // 2x DPI for ultra-sharp typography
+    useCORS: true,
+    logging: false,
     backgroundColor: '#ffffff',
+    windowWidth: 900,
+    scrollX: 0,
+    scrollY: 0,
   });
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.98);
+  const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -110,14 +118,14 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
   let position = 0;
 
   // Add first page
-  pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
   heightLeft -= pdfPageHeight;
 
   // Handle multi-page if entries list is long
   while (heightLeft > 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
     heightLeft -= pdfPageHeight;
   }
 
