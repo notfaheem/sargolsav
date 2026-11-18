@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { comparePublishedResults } from '../lib/tabulationEngine';
 import {
   Trophy,
@@ -56,8 +56,8 @@ export default function PosterMaker() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  // Ref to the hidden 1080x1080 square poster DOM element for html2canvas
-  const hiddenPosterRef = useRef(null);
+  // Ref to the 1080x1080 square poster DOM element for html-to-image
+  const posterRef = useRef(null);
 
   // Fetch Published Items on Mount
   useEffect(() => {
@@ -231,12 +231,12 @@ export default function PosterMaker() {
 
   // Download High-Res Congrats Poster (Strict 1080x1080 1:1 Square Canvas)
   const handleDownloadPoster = async () => {
-    if (!hiddenPosterRef.current || isGenerating) return;
+    if (!posterRef.current || isGenerating) return;
     setIsGenerating(true);
     setDownloadSuccess(false);
 
     try {
-      const element = hiddenPosterRef.current;
+      const element = posterRef.current;
 
       // Ensure all images inside are loaded
       const images = element.getElementsByTagName('img');
@@ -250,27 +250,18 @@ export default function PosterMaker() {
         })
       );
 
-      // Render hidden 1080x1080 canvas with scale: 2 for ultra-crisp output
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#0F172A',
-        width: 1080,
-        height: 1080,
-        windowWidth: 1080,
-        windowHeight: 1080,
-        scrollX: 0,
-        scrollY: 0,
+      // Render 1080x1080 poster via html-to-image (SVG foreignObject)
+      const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        cacheBust: true,
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       const cleanWinnerName = (posterData.winnerName || 'Winner')
         .trim()
         .replace(/[^a-zA-Z0-9_\u0D00-\u0D7F-]/g, '_');
       link.download = `${cleanWinnerName}_Congrats_Poster.png`;
-      link.href = imgData;
+      link.href = dataUrl;
       link.click();
 
       setDownloadSuccess(true);
@@ -701,18 +692,18 @@ export default function PosterMaker() {
                     style={{
                       width: '115px',
                       height: '115px',
-                      borderRadius: '20px',
+                      borderRadius: '9999px',
                       border: '3px solid #FBBF24',
                       boxShadow: '0 0 20px rgba(251, 191, 36, 0.35)',
                     }}
-                    className="overflow-hidden bg-slate-900 flex items-center justify-center shrink-0"
+                    className="w-[115px] h-[115px] rounded-full overflow-hidden bg-slate-900 border-[3px] border-amber-400 relative flex items-center justify-center shrink-0"
                   >
                     {userPhoto ? (
                       <img
                         src={userPhoto}
                         alt="Winner"
-                        className="w-full h-full object-cover object-center"
-                        style={{ transform: `scale(${photoScale})` }}
+                        className="w-full h-full object-cover object-center absolute inset-0"
+                        style={{ transform: photoScale !== 1 ? `scale(${photoScale})` : undefined }}
                       />
                     ) : (
                       <div className="text-center p-2 text-slate-500 space-y-1">
@@ -817,428 +808,448 @@ export default function PosterMaker() {
         </div>
       </main>
 
-      {/* 4. Strict 1080px × 1080px 1:1 Square Hidden Poster Canvas for html2canvas */}
+      {/* 4. Strict 1080px × 1080px 1:1 Square Hidden Poster Canvas for html-to-image */}
       <div
-        ref={hiddenPosterRef}
         style={{
           position: 'fixed',
           left: '-9999px',
           top: '0',
-          width: '1080px',
-          height: '1080px',
+          overflow: 'hidden',
           zIndex: -9999,
           pointerEvents: 'none',
-          background: 'radial-gradient(circle at 50% 25%, #1E1B4B 0%, #0F172A 70%, #090D16 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '44px 48px',
-          boxSizing: 'border-box',
-          overflow: 'visible',
         }}
-        className="font-sans select-none text-white"
       >
-        {/* Subtle Decorative Gold Corner Accents */}
         <div
+          ref={posterRef}
           style={{
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            width: '40px',
-            height: '40px',
-            borderTop: '4px solid #FBBF24',
-            borderLeft: '4px solid #FBBF24',
-            borderTopLeftRadius: '14px',
-            pointerEvents: 'none',
-            opacity: 0.85,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            width: '40px',
-            height: '40px',
-            borderTop: '4px solid #FBBF24',
-            borderRight: '4px solid #FBBF24',
-            borderTopRightRadius: '14px',
-            pointerEvents: 'none',
-            opacity: 0.85,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            left: '20px',
-            width: '40px',
-            height: '40px',
-            borderBottom: '4px solid #FBBF24',
-            borderLeft: '4px solid #FBBF24',
-            borderBottomLeftRadius: '14px',
-            pointerEvents: 'none',
-            opacity: 0.85,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-            width: '40px',
-            height: '40px',
-            borderBottom: '4px solid #FBBF24',
-            borderRight: '4px solid #FBBF24',
-            borderBottomRightRadius: '14px',
-            pointerEvents: 'none',
-            opacity: 0.85,
-          }}
-        />
-
-        {/* SECTION 1: Top Header & Branding (Largest Event Identity) */}
-        <div
-          style={{
+            width: '1080px',
+            height: '1080px',
+            background: 'radial-gradient(circle at 50% 25%, #1E1B4B 0%, #0F172A 70%, #090D16 100%)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            textAlign: 'center',
-            width: '100%',
+            justifyContent: 'space-between',
+            padding: '44px 48px',
+            boxSizing: 'border-box',
+            position: 'relative',
           }}
+          className="font-sans select-none text-white"
         >
-          {/* Prominent White Rounded Card */}
+          {/* Subtle Decorative Gold Corner Accents */}
           <div
             style={{
-              backgroundColor: '#FFFFFF',
-              padding: '12px 36px',
-              borderRadius: '20px',
-              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)',
+              position: 'absolute',
+              top: '20px',
+              left: '20px',
+              width: '40px',
+              height: '40px',
+              borderTop: '4px solid #FBBF24',
+              borderLeft: '4px solid #FBBF24',
+              borderTopLeftRadius: '14px',
+              pointerEvents: 'none',
+              opacity: 0.85,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              width: '40px',
+              height: '40px',
+              borderTop: '4px solid #FBBF24',
+              borderRight: '4px solid #FBBF24',
+              borderTopRightRadius: '14px',
+              pointerEvents: 'none',
+              opacity: 0.85,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '20px',
+              width: '40px',
+              height: '40px',
+              borderBottom: '4px solid #FBBF24',
+              borderLeft: '4px solid #FBBF24',
+              borderBottomLeftRadius: '14px',
+              pointerEvents: 'none',
+              opacity: 0.85,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              right: '20px',
+              width: '40px',
+              height: '40px',
+              borderBottom: '4px solid #FBBF24',
+              borderRight: '4px solid #FBBF24',
+              borderBottomRightRadius: '14px',
+              pointerEvents: 'none',
+              opacity: 0.85,
+            }}
+          />
+
+          {/* SECTION 1: Top Header & Branding (Largest Event Identity) */}
+          <div
+            style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: '20px',
+              textAlign: 'center',
+              width: '100%',
             }}
           >
-            <img
-              src="/logo.png"
-              alt="Sargolsav Logo"
+            {/* Prominent White Rounded Card */}
+            <div
               style={{
-                height: '75px',
-                width: 'auto',
-                objectFit: 'contain',
+                backgroundColor: '#FFFFFF',
+                padding: '12px 36px',
+                borderRadius: '20px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '20px',
               }}
-            />
-            <div style={{ textAlign: 'left' }}>
-              <div
+              className="flex items-center justify-center px-9 py-3 leading-none"
+            >
+              <img
+                src="/logo.png"
+                alt="Sargolsav Logo"
                 style={{
-                  fontSize: '44px',
-                  fontWeight: 900,
-                  color: '#1B254B',
-                  lineHeight: '1',
-                  letterSpacing: '0.02em',
+                  height: '75px',
+                  width: 'auto',
+                  objectFit: 'contain',
                 }}
-              >
-                SARGOLSAV 2026
+              />
+              <div style={{ textAlign: 'left' }}>
+                <div
+                  style={{
+                    fontSize: '44px',
+                    fontWeight: 900,
+                    color: '#1B254B',
+                    lineHeight: '44px',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  SARGOLSAV 2026
+                </div>
+                <div
+                  style={{
+                    fontSize: '20px',
+                    fontWeight: 800,
+                    color: '#EA580C',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    lineHeight: '20px',
+                    marginTop: '6px',
+                  }}
+                >
+                  NILAMBUR ZONE
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: '20px',
-                  fontWeight: 800,
-                  color: '#EA580C',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  lineHeight: '1.2',
-                  marginTop: '4px',
-                }}
-              >
-                NILAMBUR ZONE
-              </div>
+            </div>
+
+            {/* Subtitle text directly below white card */}
+            <div
+              style={{
+                fontSize: '18px',
+                fontWeight: 700,
+                color: '#FDE68A',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                marginTop: '10px',
+                lineHeight: '18px',
+                textAlign: 'center',
+              }}
+            >
+              MSM-CIER KERALA
             </div>
           </div>
 
-          {/* Subtitle text directly below white card */}
+          {/* SECTION 2: Celebration Heading */}
           <div
             style={{
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#FDE68A',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              marginTop: '10px',
-              lineHeight: '1.2',
-            }}
-          >
-            MSM-CIER KERALA
-          </div>
-        </div>
-
-        {/* SECTION 2: Celebration Heading */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            width: '100%',
-            marginTop: '4px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '52px',
-              fontWeight: 900,
-              color: '#FBBF24', // Solid bright gold, NO bg-clip-text!
-              lineHeight: '1.15',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-            }}
-          >
-            🏆 CONGRATULATIONS!
-          </div>
-          <div
-            style={{
-              fontSize: '36px',
-              fontWeight: 700,
-              color: '#FFFFFF', // Solid pure white
-              lineHeight: '1.3',
-              marginTop: '2px',
-            }}
-            className="font-ml"
-          >
-            അഭിനന്ദനങ്ങൾ!
-          </div>
-        </div>
-
-        {/* SECTION 3: Winner Photo Frame (Centerpiece, 310px × 310px) */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            margin: '4px 0',
-          }}
-        >
-          <div
-            style={{
-              width: '310px',
-              height: '310px',
-              minWidth: '310px',
-              minHeight: '310px',
-              borderRadius: '36px',
-              border: '6px solid #FBBF24',
-              boxShadow: '0 0 35px rgba(251, 191, 36, 0.35)',
-              overflow: 'hidden',
-              backgroundColor: '#0F172A',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
+              textAlign: 'center',
+              width: '100%',
+              marginTop: '4px',
             }}
           >
-            {userPhoto ? (
-              <img
-                src={userPhoto}
-                alt="Winner"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                  transform: `scale(${photoScale})`,
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#64748B',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <Camera style={{ width: '64px', height: '64px', color: '#475569' }} />
-                <span
+            <div
+              style={{
+                fontSize: '52px',
+                fontWeight: 900,
+                color: '#FBBF24',
+                lineHeight: '52px',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+              }}
+            >
+              🏆 CONGRATULATIONS!
+            </div>
+            <div
+              style={{
+                fontSize: '36px',
+                fontWeight: 700,
+                color: '#FFFFFF',
+                lineHeight: '44px',
+                marginTop: '6px',
+                textAlign: 'center',
+              }}
+              className="font-ml"
+            >
+              അഭിനന്ദനങ്ങൾ!
+            </div>
+          </div>
+
+          {/* SECTION 3: Winner Photo Frame (Centerpiece, 310px × 310px, rounded-full) */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              margin: '4px 0',
+            }}
+          >
+            <div
+              className="w-[310px] h-[310px] rounded-full overflow-hidden border-[6px] border-amber-400 relative flex-shrink-0"
+              style={{
+                width: '310px',
+                height: '310px',
+                borderRadius: '9999px',
+                border: '6px solid #FBBF24',
+                boxShadow: '0 0 35px rgba(251, 191, 36, 0.35)',
+                overflow: 'hidden',
+                backgroundColor: '#0F172A',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              {userPhoto ? (
+                <img
+                  src={userPhoto}
+                  alt="Winner"
+                  className="w-full h-full object-cover object-center absolute inset-0"
                   style={{
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    color: '#94A3B8',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                    transform: photoScale !== 1 ? `scale(${photoScale})` : undefined,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    color: '#64748B',
                   }}
                 >
-                  Participant Photo
+                  <Camera style={{ width: '64px', height: '64px', color: '#475569' }} />
+                  <span
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: 600,
+                      color: '#94A3B8',
+                    }}
+                  >
+                    Participant Photo
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 4: Winner Name & Madrasa */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              width: '100%',
+            }}
+          >
+            {/* Participant Name with auto-shrink if > 22 chars */}
+            <div
+              style={{
+                fontSize: nameFontSize,
+                fontWeight: 900,
+                color: '#FFFFFF',
+                lineHeight: nameFontSize,
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                maxWidth: '960px',
+                padding: '0 16px',
+              }}
+              className="font-ml"
+            >
+              {posterData.winnerName || 'Winner Name'}
+            </div>
+
+            {/* Madrasa Pill */}
+            {posterData.madrasa && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                  border: '2px solid #475569',
+                  borderRadius: '9999px',
+                  padding: '10px 32px',
+                  marginTop: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                className="flex items-center justify-center px-8 py-2.5 leading-none"
+              >
+                <span
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 700,
+                    color: '#F8FAFC',
+                    lineHeight: '24px',
+                  }}
+                >
+                  🕌 MADRASA: {posterData.madrasa}
                 </span>
               </div>
             )}
           </div>
-        </div>
 
-        {/* SECTION 4: Winner Name & Madrasa */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            width: '100%',
-          }}
-        >
-          {/* Participant Name with auto-shrink if > 22 chars */}
+          {/* SECTION 5: Rank & Grade Badges (Side-by-Side, Dead-Center Aligned) */}
           <div
             style={{
-              fontSize: nameFontSize,
-              fontWeight: 900,
-              color: '#FFFFFF',
-              lineHeight: '1.15',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              maxWidth: '960px',
-              padding: '0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '24px',
+              margin: '6px 0',
             }}
-            className="font-ml"
+            className="flex items-center justify-center gap-6"
           >
-            {posterData.winnerName || 'Winner Name'}
+            {/* If rank is 1, 2, or 3 */}
+            {rankBadgeInfo && (
+              <div
+                style={{
+                  backgroundColor: rankBadgeInfo.bg,
+                  color: rankBadgeInfo.textColor,
+                  borderRadius: '18px',
+                  padding: '12px 32px',
+                  fontSize: '30px',
+                  fontWeight: 900,
+                  lineHeight: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 15px rgba(251, 191, 36, 0.3)',
+                }}
+                className="flex items-center justify-center px-8 py-3 leading-none"
+              >
+                <span>{rankBadgeInfo.text}</span>
+              </div>
+            )}
+
+            {/* If grade is present */}
+            {posterData.grade && (
+              <div
+                style={{
+                  backgroundColor: '#10B981',
+                  color: '#FFFFFF',
+                  borderRadius: '18px',
+                  padding: '12px 32px',
+                  fontSize: '30px',
+                  fontWeight: 900,
+                  lineHeight: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                }}
+                className="flex items-center justify-center px-8 py-3 leading-none"
+              >
+                <span>⭐ GRADE {posterData.grade}</span>
+              </div>
+            )}
           </div>
 
-          {/* Madrasa Pill */}
-          {posterData.madrasa && (
+          {/* SECTION 6: Bottom Competition Item Banner (Full-Width Highlight Box) */}
+          <div
+            style={{
+              width: '100%',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid #334155',
+              borderRadius: '20px',
+              padding: '16px 28px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+            }}
+            className="flex flex-col items-center justify-center px-7 py-4"
+          >
+            {/* Category Badge */}
             <div
               style={{
-                backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                border: '2px solid #475569',
-                borderRadius: '9999px',
-                padding: '10px 32px',
-                marginTop: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: '1',
+                fontSize: '22px',
+                fontWeight: 900,
+                color: '#FB923C',
+                textTransform: 'uppercase',
+                lineHeight: '22px',
               }}
             >
-              <span
+              {posterData.category || 'CATEGORY'} • ITEM #{selectedItemCode || '—'}
+            </div>
+
+            {/* Malayalam Item Name */}
+            <div
+              style={{
+                fontSize: '36px',
+                fontWeight: 700,
+                color: '#FFFFFF',
+                lineHeight: '44px',
+                marginTop: '6px',
+              }}
+              className="font-ml"
+            >
+              {posterData.itemNameMl || 'Competition Item'}
+            </div>
+
+            {/* English Item Name */}
+            {posterData.itemNameEn && (
+              <div
                 style={{
                   fontSize: '24px',
-                  fontWeight: 700,
-                  color: '#F8FAFC',
-                  lineHeight: '1',
+                  fontWeight: 600,
+                  color: '#CBD5E1',
+                  lineHeight: '24px',
+                  marginTop: '4px',
                 }}
               >
-                🕌 MADRASA: {posterData.madrasa}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* SECTION 5: Rank & Grade Badges (Side-by-Side, Dead-Center Aligned) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '24px',
-            margin: '6px 0',
-          }}
-        >
-          {/* If rank is 1, 2, or 3 */}
-          {rankBadgeInfo && (
-            <div
-              style={{
-                backgroundColor: rankBadgeInfo.bg,
-                color: rankBadgeInfo.textColor,
-                borderRadius: '18px',
-                padding: '12px 32px',
-                fontSize: '30px',
-                fontWeight: 900,
-                lineHeight: '1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 15px rgba(251, 191, 36, 0.3)',
-              }}
-            >
-              {rankBadgeInfo.text}
-            </div>
-          )}
-
-          {/* If grade is present */}
-          {posterData.grade && (
-            <div
-              style={{
-                backgroundColor: '#10B981',
-                color: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '12px 32px',
-                fontSize: '30px',
-                fontWeight: 900,
-                lineHeight: '1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-              }}
-            >
-              ⭐ GRADE {posterData.grade}
-            </div>
-          )}
-        </div>
-
-        {/* SECTION 6: Bottom Competition Item Banner (Full-Width Highlight Box) */}
-        <div
-          style={{
-            width: '100%',
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid #334155',
-            borderRadius: '20px',
-            padding: '16px 28px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxSizing: 'border-box',
-          }}
-        >
-          {/* Category Badge */}
-          <div
-            style={{
-              fontSize: '22px',
-              fontWeight: 900,
-              color: '#FB923C',
-              textTransform: 'uppercase',
-              lineHeight: '1.2',
-            }}
-          >
-            {posterData.category || 'CATEGORY'} • ITEM #{selectedItemCode || '—'}
+                {posterData.itemNameEn}
+              </div>
+            )}
           </div>
-
-          {/* Malayalam Item Name */}
-          <div
-            style={{
-              fontSize: '36px',
-              fontWeight: 700,
-              color: '#FFFFFF',
-              lineHeight: '1.4',
-              marginTop: '4px',
-            }}
-            className="font-ml"
-          >
-            {posterData.itemNameMl || 'Competition Item'}
-          </div>
-
-          {/* English Item Name */}
-          {posterData.itemNameEn && (
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 600,
-                color: '#CBD5E1',
-                lineHeight: '1.3',
-                marginTop: '2px',
-              }}
-            >
-              {posterData.itemNameEn}
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -27,7 +27,7 @@ export function getItemType(item) {
 
 /**
  * Official Consolidated Score Sheet A4 Template matching ITEM_207.pdf.
- * Rendered off-screen and captured by html2canvas + jsPDF.
+ * Rendered off-screen and captured by html-to-image + jsPDF.
  */
 export default function ScoreSheetPdfTemplate({ containerId, item, rows = [] }) {
   if (!item) return null;

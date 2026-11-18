@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 /**
@@ -27,14 +27,10 @@ export async function downloadResultPdf(containerId, itemCode) {
     })
   );
 
-  const canvas = await html2canvas(element, {
-    scale: 2, // 2x DPI for ultra-sharp typography
-    useCORS: true,
-    logging: false,
+  const canvas = await toCanvas(element, {
+    pixelRatio: 2, // 2x DPI for ultra-sharp typography
+    cacheBust: true,
     backgroundColor: '#ffffff',
-    windowWidth: 800,
-    scrollX: 0,
-    scrollY: 0,
   });
 
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -93,14 +89,10 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
     })
   );
 
-  const canvas = await html2canvas(element, {
-    scale: 2, // 2x DPI for ultra-sharp typography
-    useCORS: true,
-    logging: false,
+  const canvas = await toCanvas(element, {
+    pixelRatio: 2, // 2x DPI for ultra-sharp typography
+    cacheBust: true,
     backgroundColor: '#ffffff',
-    windowWidth: 800,
-    scrollX: 0,
-    scrollY: 0,
   });
 
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
