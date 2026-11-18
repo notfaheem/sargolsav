@@ -59,31 +59,38 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
       </div>
 
       {/* 2. Metadata Banner */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 flex items-center justify-between text-xs">
-        <div>
-          <span className="font-bold text-slate-500 mr-1.5">ഇനം (Item):</span>
-          <span className="font-mono font-bold bg-[#1B254B] text-white px-2 py-0.5 rounded mr-2">
-            #{item.code}
-          </span>
-          <span className="font-ml font-bold text-sm text-[#1B254B]">
-            {item.name_ml}
-          </span>
-          <span className="text-slate-500 font-medium ml-1.5">
-            ({item.name_en})
-          </span>
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 flex items-center justify-between gap-5">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5 mb-1">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              ഇനം (Item):
+            </span>
+            <span className="inline-flex items-center justify-center px-3 py-1.5 bg-slate-800 text-white font-bold rounded-md whitespace-nowrap leading-none align-middle font-mono text-sm">
+              #{item.code}
+            </span>
+          </div>
+
+          <div className="text-2xl md:text-3xl font-black text-slate-950 mt-1 leading-snug">
+            <span className="font-ml">{item.name_ml}</span>
+            {item.name_en && (
+              <span className="text-slate-600 font-bold text-xl md:text-2xl ml-2 font-sans">
+                ({item.name_en})
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div>
-            <span className="font-bold text-slate-500 mr-1">വിഭാഗം:</span>
-            <span className="font-bold text-[#F26430] uppercase">
+        <div className="flex items-center gap-3 shrink-0 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-2xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base font-semibold text-slate-600">വിഭാഗം:</span>
+            <span className="text-2xl font-black uppercase text-slate-900 tracking-wide">
               {item.category}
             </span>
           </div>
-          <span className="text-slate-300">|</span>
-          <div>
-            <span className="font-bold text-slate-500 mr-1">തരം:</span>
-            <span className="font-bold text-slate-700 uppercase">
+          <span className="text-slate-300 text-lg">|</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-base font-semibold text-slate-600">തരം:</span>
+            <span className="text-base font-bold text-slate-700 uppercase">
               {item.mode}
             </span>
           </div>
