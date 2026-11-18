@@ -11,6 +11,7 @@ import GlobalSearchPanel from '../components/GlobalSearchPanel';
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import PublicResourcesTab from '../components/PublicResourcesTab';
 import DeveloperFooter from '../components/DeveloperFooter';
+import GlobalAnnouncementModal from '../components/GlobalAnnouncementModal';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers, Clock, Eye } from 'lucide-react';
 
 export default function PublicPortal() {
@@ -34,37 +35,102 @@ export default function PublicPortal() {
   // Selected item for Result View Modal (published result or awaiting notice)
   const [selectedModalItem, setSelectedModalItem] = useState(null);
 
-  // Public settings state (strictly only announcement_text and show_announcement)
+  // Public settings state (strictly announcement text and visibility)
   const [settings, setSettings] = useState({
     announcement_text: '',
     show_announcement: false,
   });
+
+  // Global Announcement Popup Modal state
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupData, setPopupData] = useState(null);
 
   // Items state
   const [items, setItems] = useState([]);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState(null);
 
-  // Fetch public settings - strictly selecting only announcement fields for privacy
+  // Handle popup close & dismissal
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    localStorage.setItem('sargolsav_popup_dismissed', 'true');
+  };
+
+  // Evaluate Popup Frequency Rule
+  const evaluatePopupTrigger = useCallback((config) => {
+    if (!config || !config.is_popup_active) return;
+
+    // Increment visit count in localStorage
+    const countKey = 'sargolsav_visit_count';
+    const rawCount = parseInt(localStorage.getItem(countKey) || '0', 10);
+    const visitCount = (isNaN(rawCount) ? 0 : rawCount) + 1;
+    localStorage.setItem(countKey, String(visitCount));
+
+    const isDismissed = localStorage.getItem('sargolsav_popup_dismissed') === 'true';
+    const freq =
+      typeof config.popup_frequency === 'number'
+        ? config.popup_frequency
+        : parseInt(config.popup_frequency, 10) || 0;
+
+    let shouldShow = false;
+    if (freq === 0) {
+      // 0 = show once only across lifetime
+      if (!isDismissed) shouldShow = true;
+    } else if (freq === 1) {
+      // 1 = show every visit / reload
+      shouldShow = true;
+    } else if (freq > 1) {
+      // Show every Nth visit (e.g. 1st, 4th, 7th when freq = 3)
+      if (visitCount % freq === 1) {
+        shouldShow = true;
+      }
+    }
+
+    if (shouldShow) {
+      setPopupData({
+        heading: config.popup_heading || '',
+        message: config.popup_message || '',
+        imageUrl: config.popup_image_url || '',
+        btn1Text: config.popup_btn1_text || '',
+        btn1Url: config.popup_btn1_url || '',
+        btn2Text: config.popup_btn2_text || '',
+        btn2Url: config.popup_btn2_url || '',
+      });
+      setShowPopup(true);
+    }
+  }, []);
+
+  // Fetch public settings & popup configuration
   useEffect(() => {
     async function fetchPublicSettings() {
       try {
         const { data, error } = await supabase
           .from('settings')
-          .select('announcement_text, show_announcement')
+          .select('*')
           .eq('id', 1)
           .single();
 
-        if (error) {
-          console.warn('Error fetching announcement settings:', error.message);
-          return;
-        }
+        let popupConfig = null;
 
-        if (data) {
+        if (error) {
+          console.warn('Error fetching settings from Supabase:', error.message);
+          // Fallback check for local storage backup if columns migration is pending
+          try {
+            const localData = localStorage.getItem('sargolsav_admin_popup_settings');
+            if (localData) popupConfig = JSON.parse(localData);
+          } catch (e) {
+            // ignore
+          }
+        } else if (data) {
           setSettings({
             announcement_text: data.announcement_text || '',
             show_announcement: Boolean(data.show_announcement),
           });
+          popupConfig = data;
+        }
+
+        if (popupConfig) {
+          evaluatePopupTrigger(popupConfig);
         }
       } catch (err) {
         console.warn('Error in fetchPublicSettings:', err);
@@ -72,7 +138,7 @@ export default function PublicPortal() {
     }
 
     fetchPublicSettings();
-  }, []);
+  }, [evaluatePopupTrigger]);
 
   // Track Public Visits (Total Views & Live Presence)
   useEffect(() => {
@@ -407,6 +473,13 @@ export default function PublicPortal() {
           onClose={() => setSelectedModalItem(null)}
         />
       )}
+
+      {/* Global Announcement Popup Modal */}
+      <GlobalAnnouncementModal
+        isOpen={showPopup}
+        onClose={handleClosePopup}
+        popupData={popupData}
+      />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-5 px-4 print:hidden">

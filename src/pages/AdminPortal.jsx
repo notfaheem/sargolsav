@@ -21,12 +21,20 @@ import {
   ShieldAlert,
   Info,
   Trophy,
+  Bell,
+  Eye,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Upload,
+  Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 import ChampionshipsTab from '../components/ChampionshipsTab';
 import LiveAnalyticsBanner from '../components/LiveAnalyticsBanner';
 import AdminResourceManager from '../components/AdminResourceManager';
 import MadrasaUnitMapper from '../components/MadrasaUnitMapper';
 import DeveloperFooter from '../components/DeveloperFooter';
+import GlobalAnnouncementModal from '../components/GlobalAnnouncementModal';
 
 const SESSION_STORAGE_KEY = 'sargolsav_admin_session';
 
@@ -46,7 +54,18 @@ export default function AdminPortal() {
     show_announcement: false,
     enforce_min_entry_rule: false,
     admin_pin: '2026',
+    // Global Popup Settings
+    is_popup_active: false,
+    popup_heading: '',
+    popup_message: '',
+    popup_image_url: '',
+    popup_btn1_text: '',
+    popup_btn1_url: '',
+    popup_btn2_text: '',
+    popup_btn2_url: '',
+    popup_frequency: 1,
   });
+  const [showPopupPreview, setShowPopupPreview] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -65,7 +84,7 @@ export default function AdminPortal() {
     try {
       const { data, error } = await supabase
         .from('settings')
-        .select('id, announcement_text, show_announcement, enforce_min_entry_rule, admin_pin')
+        .select('*')
         .eq('id', 1)
         .single();
 
@@ -76,12 +95,58 @@ export default function AdminPortal() {
       }
 
       if (data) {
+        let localPopup = {};
+        try {
+          const stored = localStorage.getItem('sargolsav_admin_popup_settings');
+          if (stored) localPopup = JSON.parse(stored);
+        } catch (e) {
+          // ignore
+        }
+
         setSettings({
           id: data.id || 1,
           announcement_text: data.announcement_text || '',
           show_announcement: Boolean(data.show_announcement),
           enforce_min_entry_rule: Boolean(data.enforce_min_entry_rule),
           admin_pin: data.admin_pin || '2026',
+          is_popup_active:
+            data.is_popup_active !== undefined
+              ? Boolean(data.is_popup_active)
+              : Boolean(localPopup.is_popup_active),
+          popup_heading:
+            data.popup_heading !== undefined
+              ? data.popup_heading || ''
+              : localPopup.popup_heading || '',
+          popup_message:
+            data.popup_message !== undefined
+              ? data.popup_message || ''
+              : localPopup.popup_message || '',
+          popup_image_url:
+            data.popup_image_url !== undefined
+              ? data.popup_image_url || ''
+              : localPopup.popup_image_url || '',
+          popup_btn1_text:
+            data.popup_btn1_text !== undefined
+              ? data.popup_btn1_text || ''
+              : localPopup.popup_btn1_text || '',
+          popup_btn1_url:
+            data.popup_btn1_url !== undefined
+              ? data.popup_btn1_url || ''
+              : localPopup.popup_btn1_url || '',
+          popup_btn2_text:
+            data.popup_btn2_text !== undefined
+              ? data.popup_btn2_text || ''
+              : localPopup.popup_btn2_text || '',
+          popup_btn2_url:
+            data.popup_btn2_url !== undefined
+              ? data.popup_btn2_url || ''
+              : localPopup.popup_btn2_url || '',
+          popup_frequency:
+            data.popup_frequency !== undefined
+              ? Number(data.popup_frequency)
+              : localPopup.popup_frequency !== undefined
+              ? Number(localPopup.popup_frequency)
+              : 1,
         });
         logger.success('SETTINGS_FETCH', 'Loaded festival configuration row (id=1)');
       }
@@ -147,34 +212,128 @@ export default function AdminPortal() {
     logger.warn('AUTH_LOGOUT', 'Admin session locked by user');
   };
 
+  // Handle Image File Upload for Popup Header
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setToast({
+        message: 'Image file is larger than 2MB. A compressed image is recommended.',
+        type: 'warning',
+      });
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSettings((prev) => ({
+        ...prev,
+        popup_image_url: reader.result,
+      }));
+      setToast({
+        message: 'Popup header image loaded. Click "Save Popup Settings" to publish.',
+        type: 'success',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle Save Settings
   const handleSaveSettings = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (isSubmitting) return;
 
     setIsSubmitting(true);
     try {
+      const payload = {
+        announcement_text: settings.announcement_text,
+        show_announcement: settings.show_announcement,
+        enforce_min_entry_rule: settings.enforce_min_entry_rule,
+        admin_pin: settings.admin_pin,
+        is_popup_active: settings.is_popup_active,
+        popup_heading: settings.popup_heading,
+        popup_message: settings.popup_message,
+        popup_image_url: settings.popup_image_url,
+        popup_btn1_text: settings.popup_btn1_text,
+        popup_btn1_url: settings.popup_btn1_url,
+        popup_btn2_text: settings.popup_btn2_text,
+        popup_btn2_url: settings.popup_btn2_url,
+        popup_frequency: parseInt(settings.popup_frequency, 10) || 0,
+      };
+
       const { error } = await supabase
         .from('settings')
-        .update({
-          announcement_text: settings.announcement_text,
-          show_announcement: settings.show_announcement,
-          enforce_min_entry_rule: settings.enforce_min_entry_rule,
-          admin_pin: settings.admin_pin,
-        })
+        .update(payload)
         .eq('id', 1);
 
       if (error) {
+        // If the table doesn't have the popup columns yet, fallback to basic settings and save popup to localStorage
+        if (
+          error.code === 'PGRST204' ||
+          error.message?.includes('column') ||
+          error.message?.includes('schema cache')
+        ) {
+          console.warn(
+            'Popup columns missing in Supabase settings table. Falling back to basic settings...',
+            error
+          );
+          const { error: basicErr } = await supabase
+            .from('settings')
+            .update({
+              announcement_text: settings.announcement_text,
+              show_announcement: settings.show_announcement,
+              enforce_min_entry_rule: settings.enforce_min_entry_rule,
+              admin_pin: settings.admin_pin,
+            })
+            .eq('id', 1);
+
+          if (basicErr) throw basicErr;
+
+          localStorage.setItem(
+            'sargolsav_admin_popup_settings',
+            JSON.stringify({
+              is_popup_active: settings.is_popup_active,
+              popup_heading: settings.popup_heading,
+              popup_message: settings.popup_message,
+              popup_image_url: settings.popup_image_url,
+              popup_btn1_text: settings.popup_btn1_text,
+              popup_btn1_url: settings.popup_btn1_url,
+              popup_btn2_text: settings.popup_btn2_text,
+              popup_btn2_url: settings.popup_btn2_url,
+              popup_frequency: settings.popup_frequency,
+            })
+          );
+
+          setToast({
+            message:
+              'Basic settings saved. (Notice: Run add_popup_settings.sql in Supabase SQL Editor to sync to database).',
+            type: 'warning',
+          });
+          return;
+        }
         throw error;
       }
 
-      logger.success('SETTINGS_UPDATE', 'Updated announcement, minimum entry rule, and PIN', {
-        showAnnouncement: settings.show_announcement,
-        enforceMinRule: settings.enforce_min_entry_rule,
-      });
+      // Also mirror to localStorage
+      localStorage.setItem(
+        'sargolsav_admin_popup_settings',
+        JSON.stringify({
+          is_popup_active: settings.is_popup_active,
+          popup_heading: settings.popup_heading,
+          popup_message: settings.popup_message,
+          popup_image_url: settings.popup_image_url,
+          popup_btn1_text: settings.popup_btn1_text,
+          popup_btn1_url: settings.popup_btn1_url,
+          popup_btn2_text: settings.popup_btn2_text,
+          popup_btn2_url: settings.popup_btn2_url,
+          popup_frequency: settings.popup_frequency,
+        })
+      );
+
+      logger.success('SETTINGS_UPDATE', 'Updated settings and popup configuration');
 
       setToast({
-        message: 'Settings saved successfully!',
+        message: 'Settings and Global Popup saved successfully!',
         type: 'success',
       });
       setTimeout(() => {
@@ -562,6 +721,360 @@ export default function AdminPortal() {
               </form>
             </div>
 
+            {/* Global Popup Settings Card */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-100 gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                      <Bell className="w-5 h-5" />
+                    </span>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1B254B]">
+                      Global Popup Announcement Modal
+                    </h2>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Display a high-priority modal to public portal visitors with frequency controls, rich imagery, and action buttons.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPopupPreview(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                    title="Preview how the popup looks to visitors"
+                  >
+                    <Eye className="w-4 h-4 text-indigo-600" />
+                    <span>Live Preview</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-6">
+                {/* 1. Enable Public Popup Toggle Switch */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80">
+                  <div className="space-y-0.5 pr-4">
+                    <label
+                      htmlFor="is_popup_active"
+                      className="text-sm font-bold text-[#1B254B] cursor-pointer flex items-center gap-2"
+                    >
+                      <span>Enable Public Popup Modal</span>
+                      {settings.is_popup_active ? (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                          Active Live
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-200 text-slate-600">
+                          Inactive
+                        </span>
+                      )}
+                    </label>
+                    <p className="text-xs text-slate-600">
+                      When turned ON, visitors on the public portal will be shown this announcement modal according to the frequency below.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    id="is_popup_active"
+                    aria-checked={settings.is_popup_active}
+                    onClick={() =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        is_popup_active: !prev.is_popup_active,
+                      }))
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-[#F26430] ${
+                      settings.is_popup_active ? 'bg-[#16A34A]' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        settings.is_popup_active ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* 2. Popup Heading */}
+                <div className="space-y-2">
+                  <label htmlFor="popup_heading" className="text-sm font-bold text-[#1B254B] block">
+                    Popup Heading
+                  </label>
+                  <input
+                    id="popup_heading"
+                    type="text"
+                    value={settings.popup_heading}
+                    onChange={(e) =>
+                      setSettings((prev) => ({ ...prev, popup_heading: e.target.value }))
+                    }
+                    placeholder="e.g. Off-Stage Results Live!"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-[#1B254B] font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B] focus:border-transparent transition-all"
+                  />
+                </div>
+
+                {/* 3. Popup Message (Textarea) */}
+                <div className="space-y-2">
+                  <label htmlFor="popup_message" className="text-sm font-bold text-[#1B254B] block">
+                    Announcement Message Body
+                  </label>
+                  <textarea
+                    id="popup_message"
+                    rows={4}
+                    value={settings.popup_message}
+                    onChange={(e) =>
+                      setSettings((prev) => ({ ...prev, popup_message: e.target.value }))
+                    }
+                    placeholder="Enter announcement details, congratulations note, or urgent instructions..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm text-[#1B254B] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B] focus:border-transparent transition-all"
+                  />
+                </div>
+
+                {/* 4. Header Image (URL or Local Upload with Preview) */}
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-[#1B254B] flex items-center justify-between">
+                    <span>Header Image (Optional)</span>
+                    <span className="text-xs font-normal text-slate-500">Renders flush across top of modal</span>
+                  </label>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <div className="relative">
+                        <input
+                          type="url"
+                          value={settings.popup_image_url}
+                          onChange={(e) =>
+                            setSettings((prev) => ({ ...prev, popup_image_url: e.target.value }))
+                          }
+                          placeholder="Paste image URL (https://...)"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-[#1B254B] focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#1B254B] focus:border-transparent transition-all"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">Or select a photo from your computer/phone:</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {settings.popup_image_url && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings((prev) => ({ ...prev, popup_image_url: '' }))}
+                          className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Image Preview Box */}
+                  {settings.popup_image_url && (
+                    <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 max-w-sm max-h-44 relative shadow-inner">
+                      <img
+                        src={settings.popup_image_url}
+                        alt="Popup Header Preview"
+                        className="w-full h-44 object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Frequency Controls */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <label htmlFor="popup_frequency" className="text-sm font-bold text-[#1B254B]">
+                        Display Frequency Rule
+                      </label>
+                      <p className="text-xs text-slate-500">
+                        Controls how often visitors see this popup on the public portal.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-600">Frequency:</span>
+                      <input
+                        id="popup_frequency"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={settings.popup_frequency}
+                        onChange={(e) =>
+                          setSettings((prev) => ({
+                            ...prev,
+                            popup_frequency: parseInt(e.target.value, 10) || 0,
+                          }))
+                        }
+                        className="w-20 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-center text-sm font-bold text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-[#1B254B]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Frequency Explanation Pills */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                    <div
+                      className={`p-2 rounded-xl border transition-all ${
+                        Number(settings.popup_frequency) === 0
+                          ? 'bg-amber-100/70 border-amber-300 text-amber-900 font-semibold'
+                          : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      <p className="font-bold">0 = Show Once</p>
+                      <p className="text-[11px] text-slate-500">Shows once, never again after dismissed.</p>
+                    </div>
+                    <div
+                      className={`p-2 rounded-xl border transition-all ${
+                        Number(settings.popup_frequency) === 1
+                          ? 'bg-amber-100/70 border-amber-300 text-amber-900 font-semibold'
+                          : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      <p className="font-bold">1 = Show Every Time</p>
+                      <p className="text-[11px] text-slate-500">Appears on every site reload / visit.</p>
+                    </div>
+                    <div
+                      className={`p-2 rounded-xl border transition-all ${
+                        Number(settings.popup_frequency) > 1
+                          ? 'bg-amber-100/70 border-amber-300 text-amber-900 font-semibold'
+                          : 'bg-white border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      <p className="font-bold">{settings.popup_frequency || 3} = Every Nth Visit</p>
+                      <p className="text-[11px] text-slate-500">
+                        Appears every {settings.popup_frequency || 3} visits (1st, {Number(settings.popup_frequency || 3) + 1}th...).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Action Buttons (Button 1 & Button 2) */}
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Call-to-Action Buttons (Optional)
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Button 1 (Primary - Purple/Indigo) */}
+                    <div className="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                        <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                        <span>Button 1 (Primary Action)</span>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Button Text
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.popup_btn1_text}
+                          onChange={(e) =>
+                            setSettings((prev) => ({ ...prev, popup_btn1_text: e.target.value }))
+                          }
+                          placeholder="e.g. View Junior Results"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#1B254B] font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Target URL or Internal Path
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.popup_btn1_url}
+                          onChange={(e) =>
+                            setSettings((prev) => ({ ...prev, popup_btn1_url: e.target.value }))
+                          }
+                          placeholder="e.g. /poster or https://instagram.com/..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-indigo-600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Button 2 (Secondary - Neutral) */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                        <span className="w-2 h-2 rounded-full bg-slate-400" />
+                        <span>Button 2 (Secondary Action)</span>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Button Text
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.popup_btn2_text}
+                          onChange={(e) =>
+                            setSettings((prev) => ({ ...prev, popup_btn2_text: e.target.value }))
+                          }
+                          placeholder="e.g. Download Item Schedule"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#1B254B] font-medium focus:outline-hidden focus:ring-2 focus:ring-slate-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                          Target URL or Internal Path
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.popup_btn2_url}
+                          onChange={(e) =>
+                            setSettings((prev) => ({ ...prev, popup_btn2_url: e.target.value }))
+                          }
+                          placeholder="e.g. /#resources or https://..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-slate-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save and Preview Action Row */}
+                <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPopupPreview(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4 text-indigo-600" />
+                    <span>Preview Modal</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveSettings}
+                    disabled={isSubmitting || isLoadingSettings}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-[#1B254B] text-white hover:bg-navy-800 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#F26430]" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 text-[#F26430]" />
+                        <span>Save Popup Settings</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Madrasa to Unit Mapper Section */}
             <MadrasaUnitMapper
               onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
@@ -603,6 +1116,25 @@ export default function AdminPortal() {
           <DeveloperFooter />
         </div>
       </footer>
+
+      {/* Live Preview Modal for Announcement Popup */}
+      {showPopupPreview && (
+        <GlobalAnnouncementModal
+          isOpen={showPopupPreview}
+          onClose={() => setShowPopupPreview(false)}
+          popupData={{
+            heading: settings.popup_heading || 'Sample Announcement Heading',
+            message:
+              settings.popup_message ||
+              'This is a live preview of how your announcement message will appear to visitors on the Sargolsav public portal.',
+            imageUrl: settings.popup_image_url,
+            btn1Text: settings.popup_btn1_text,
+            btn1Url: settings.popup_btn1_url,
+            btn2Text: settings.popup_btn2_text,
+            btn2Url: settings.popup_btn2_url,
+          }}
+        />
+      )}
     </div>
   );
 }
