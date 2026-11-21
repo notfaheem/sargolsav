@@ -28,9 +28,10 @@ import {
   Upload,
   Trash2,
   CheckCircle2,
+  BarChart3,
 } from 'lucide-react';
 import ChampionshipsTab from '../components/ChampionshipsTab';
-import LiveAnalyticsBanner from '../components/LiveAnalyticsBanner';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import AdminResourceManager from '../components/AdminResourceManager';
 import MadrasaUnitMapper from '../components/MadrasaUnitMapper';
 import DeveloperFooter from '../components/DeveloperFooter';
@@ -454,6 +455,7 @@ export default function AdminPortal() {
   // Authenticated Admin Dashboard Tabs
   const adminTabs = [
     { id: 'settings', label: 'Settings', icon: Sliders },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'participants', label: 'Participants (Bulk Import)', icon: Users },
     { id: 'scoresheet', label: 'Score Sheet (Tabulation)', icon: FileSpreadsheet },
     { id: 'championships', label: 'Championships', icon: Trophy },
@@ -558,11 +560,6 @@ export default function AdminPortal() {
         {/* Settings Tab - Fully Functional with System Diagnostics Console */}
         {activeTab === 'settings' && (
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Live Traffic & Analytics Banner */}
-            <LiveAnalyticsBanner
-              onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
-            />
-
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8">
               <div className="flex items-center justify-between pb-6 border-b border-slate-100">
                 <div>
@@ -1100,6 +1097,13 @@ export default function AdminPortal() {
             {/* System Diagnostics & Activity Console Panel (Phase 2) */}
             <DiagnosticsConsole />
           </div>
+        )}
+
+        {/* Analytics Tab (Live Visitors, Timeline Graph, Leaderboard, Posters) */}
+        {activeTab === 'analytics' && (
+          <AnalyticsDashboard
+            onShowToast={(msg, type) => setToast({ message: msg, type: type || 'success' })}
+          />
         )}
 
         {/* Participants (Bulk Import & Manager) - Fully Functional in Phase 2 */}

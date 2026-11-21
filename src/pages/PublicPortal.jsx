@@ -12,6 +12,7 @@ import ChampionshipsTab from '../components/ChampionshipsTab';
 import PublicResourcesTab from '../components/PublicResourcesTab';
 import DeveloperFooter from '../components/DeveloperFooter';
 import GlobalAnnouncementModal from '../components/GlobalAnnouncementModal';
+import { trackPageView, logAnalyticsEvent } from '../lib/analytics';
 import { Search, Trophy, FolderArchive, RefreshCw, AlertCircle, Layers, Clock, Eye } from 'lucide-react';
 
 export default function PublicPortal() {
@@ -151,35 +152,40 @@ export default function PublicPortal() {
     fetchPublicSettings();
   }, [evaluatePopupTrigger]);
 
+  // Open Item Result Modal with Non-blocking Telemetry
+  const handleOpenItemResult = useCallback((item) => {
+    if (!item) return;
+    setSelectedModalItem(item);
+
+    if (item.is_published) {
+      logAnalyticsEvent({
+        event_type: 'item_view',
+        item_code: item.code,
+        item_name: item.name_en || item.name_ml,
+        category: item.category,
+      });
+    }
+  }, []);
+
+  // Debounced Search Query Tracking
+  useEffect(() => {
+    const q = searchQuery?.trim();
+    if (!q || q.length < 2) return;
+
+    const timer = setTimeout(() => {
+      logAnalyticsEvent({
+        event_type: 'search_query',
+        metadata: q,
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Track Public Visits (Total Views & Live Presence)
   useEffect(() => {
-    // 1. Total Views Increment once per browser session
-    const hasViewed = sessionStorage.getItem('sargolsav_viewed');
-    if (!hasViewed) {
-      async function trackTotalView() {
-        try {
-          // Attempt RPC first
-          const { error: rpcErr } = await supabase.rpc('increment_total_views');
-          if (rpcErr) {
-            // Fallback: direct read & increment on settings
-            const { data: sData } = await supabase
-              .from('settings')
-              .select('total_views')
-              .eq('id', 1)
-              .single();
-            const currentViews = Number(sData?.total_views) || 0;
-            await supabase
-              .from('settings')
-              .update({ total_views: currentViews + 1 })
-              .eq('id', 1);
-          }
-          sessionStorage.setItem('sargolsav_viewed', '1');
-        } catch (e) {
-          console.warn('View tracking notice:', e);
-        }
-      }
-      trackTotalView();
-    }
+    // 1. Silent non-blocking page view telemetry & settings view baseline
+    trackPageView('home');
 
     // 2. Realtime Presence for Live Visitors
     const channel = supabase.channel('online-visitors');
@@ -309,7 +315,7 @@ export default function PublicPortal() {
                 query={searchQuery}
                 onClear={() => setSearchQuery('')}
                 allItems={items}
-                onOpenItemResult={(item) => setSelectedModalItem(item)}
+                onOpenItemResult={handleOpenItemResult}
               />
             ) : (
               /* Standard Category & Item Browser */
@@ -318,7 +324,7 @@ export default function PublicPortal() {
                 {publishedItems.length > 0 && (
                   <RecentResultsStrip
                     publishedItems={publishedItems}
-                    onSelectItem={(item) => setSelectedModalItem(item)}
+                    onSelectItem={handleOpenItemResult}
                   />
                 )}
 
@@ -459,7 +465,7 @@ export default function PublicPortal() {
                       <ItemCard
                         key={item.code}
                         item={item}
-                        onClick={(clickedItem) => setSelectedModalItem(clickedItem)}
+                        onClick={handleOpenItemResult}
                       />
                     ))}
                   </div>

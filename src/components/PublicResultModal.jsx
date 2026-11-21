@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
 import { downloadResultPdf } from '../lib/pdfGenerator';
 import { comparePublishedResults, getMadrasaResultPoints } from '../lib/tabulationEngine';
+import { logAnalyticsEvent } from '../lib/analytics';
 import {
   X,
   Trophy,
@@ -149,6 +150,15 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
   const handleDownloadPdf = async () => {
     if (isDownloadingPdf || !item) return;
     setIsDownloadingPdf(true);
+
+    // Silently log PDF export event
+    logAnalyticsEvent({
+      event_type: 'pdf_download',
+      item_code: item.code,
+      item_name: item.name_en || item.name_ml,
+      category: item.category,
+    });
+
     try {
       await downloadResultPdf(`public-result-pdf-${item.code}`, item.code);
     } catch (err) {

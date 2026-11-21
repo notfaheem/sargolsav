@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { getGradePoints } from '../lib/tabulationEngine';
+import { logAnalyticsEvent } from '../lib/analytics';
 import {
   User,
   Building2,
@@ -284,7 +285,19 @@ export default function GlobalSearchPanel({
                             return (
                               <div
                                 key={pt.item_code}
-                                onClick={() => itm && onOpenItemResult(itm)}
+                                onClick={() => {
+                                  if (itm) {
+                                    logAnalyticsEvent({
+                                      event_type: 'search_query',
+                                      item_code: itm.code,
+                                      item_name: itm.name_en || itm.name_ml,
+                                      category: itm.category,
+                                      madrasa: p.madrasa || p.unit,
+                                      metadata: `Result click: Reg #${p.reg_no} ${p.name}`,
+                                    });
+                                    onOpenItemResult(itm);
+                                  }
+                                }}
                                 className={`flex items-center justify-between gap-2 p-2 rounded-xl text-xs transition-all border cursor-pointer ${
                                   isItemPublished
                                     ? 'bg-orange-50/50 hover:bg-orange-100/70 border-orange-200'

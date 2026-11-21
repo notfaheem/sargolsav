@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toPng } from 'html-to-image';
 import { comparePublishedResults } from '../lib/tabulationEngine';
+import { trackPageView, logAnalyticsEvent } from '../lib/analytics';
 import {
   Trophy,
   ArrowLeft,
@@ -58,6 +59,11 @@ export default function PosterMaker() {
 
   // Ref to the 1080x1080 square poster DOM element for html-to-image
   const posterRef = useRef(null);
+
+  // Track Poster Maker Page View (once per session)
+  useEffect(() => {
+    trackPageView('poster');
+  }, []);
 
   // Fetch Published Items on Mount
   useEffect(() => {
@@ -263,6 +269,16 @@ export default function PosterMaker() {
       link.download = `${cleanWinnerName}_Congrats_Poster.png`;
       link.href = dataUrl;
       link.click();
+
+      // Silently log celebratory poster download
+      logAnalyticsEvent({
+        event_type: 'poster_download',
+        item_code: currentItem?.code,
+        item_name: currentItem?.name_en || currentItem?.name_ml || posterData.itemNameEn,
+        category: currentItem?.category || posterData.category,
+        madrasa: posterData.madrasa,
+        metadata: posterData.winnerName,
+      });
 
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
