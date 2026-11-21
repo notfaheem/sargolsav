@@ -111,7 +111,12 @@ export default function PublishPreviewModal({
                 ) : (
                   rank1.map((w) => (
                     <div key={w.reg_no} className="mt-1">
-                      <p className="text-sm font-bold text-[#1B254B] truncate">{w.name}</p>
+                      <p className="text-sm font-bold text-[#1B254B] truncate">
+                        {w.name}
+                        {w.isGroupTeam && (
+                          <span className="text-xs font-semibold text-amber-900 ml-1.5">& Team</span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">{w.unit} • #{w.reg_no}</p>
                       <div className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold">
                         <span className="px-2 py-0.2 rounded bg-amber-200 text-amber-900">Score: {w.total_score}</span>
@@ -134,7 +139,12 @@ export default function PublishPreviewModal({
                 ) : (
                   rank2.map((w) => (
                     <div key={w.reg_no} className="mt-1">
-                      <p className="text-sm font-bold text-[#1B254B] truncate">{w.name}</p>
+                      <p className="text-sm font-bold text-[#1B254B] truncate">
+                        {w.name}
+                        {w.isGroupTeam && (
+                          <span className="text-xs font-semibold text-slate-700 ml-1.5">& Team</span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">{w.unit} • #{w.reg_no}</p>
                       <div className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold">
                         <span className="px-2 py-0.2 rounded bg-slate-200 text-slate-800">Score: {w.total_score}</span>
@@ -157,7 +167,12 @@ export default function PublishPreviewModal({
                 ) : (
                   rank3.map((w) => (
                     <div key={w.reg_no} className="mt-1">
-                      <p className="text-sm font-bold text-[#1B254B] truncate">{w.name}</p>
+                      <p className="text-sm font-bold text-[#1B254B] truncate">
+                        {w.name}
+                        {w.isGroupTeam && (
+                          <span className="text-xs font-semibold text-orange-950 ml-1.5">& Team</span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">{w.unit} • #{w.reg_no}</p>
                       <div className="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold">
                         <span className="px-2 py-0.2 rounded bg-orange-100 text-orange-900">Score: {w.total_score}</span>
@@ -204,7 +219,14 @@ export default function PublishPreviewModal({
                         #{row.reg_no}
                       </td>
                       <td className="py-2 px-3">
-                        <p className="font-bold text-[#1B254B]">{row.name}</p>
+                        <p className="font-bold text-[#1B254B]">
+                          {row.name}
+                          {row.isGroupTeam && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded ml-1.5">
+                              👥 Team ({row.teamMembers?.length || 0})
+                            </span>
+                          )}
+                        </p>
                         <p className="text-[11px] text-slate-500">{row.unit}</p>
                       </td>
                       <td className="py-2 px-3 font-mono font-semibold">

@@ -44,7 +44,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
         // Query participations including total_score for accurate score-based sorting
         const { data: participations, error: ptError } = await supabase
           .from('participations')
-          .select('reg_no, rank, grade, points, total_score, judge1, judge2, judge3')
+          .select('*')
           .eq('item_code', item.code);
 
         if (ptError) throw ptError;
@@ -68,24 +68,96 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
           pMap.set(String(p.reg_no), p);
         });
 
-        const merged = participations.map((pt) => {
-          const profile = pMap.get(String(pt.reg_no)) || {};
-          const rank = pt.rank ? parseInt(pt.rank, 10) : null;
-          const grade = pt.grade || null;
-          return {
-            reg_no: pt.reg_no,
-            rank,
-            grade,
-            points: getMadrasaResultPoints(rank, grade),
-            total_score: pt.total_score !== null && pt.total_score !== undefined && pt.total_score !== '' ? Number(pt.total_score) : null,
-            judge1: pt.judge1,
-            judge2: pt.judge2,
-            judge3: pt.judge3,
-            name: profile.name || `Participant #${pt.reg_no}`,
-            unit: profile.unit || '—',
-            madrasa: profile.madrasa || '',
-          };
-        });
+        const isGroupItem = Boolean(
+          item.mode?.toUpperCase() === 'GROUP' || item.type?.toUpperCase() === 'GROUP'
+        );
+
+        let merged = [];
+
+        if (isGroupItem) {
+          const madrasaGroups = new Map();
+          participations.forEach((pt) => {
+            const profile = pMap.get(String(pt.reg_no)) || {};
+            const madrasaKey = (profile.madrasa || profile.unit || 'Unknown').trim().toUpperCase();
+            if (!madrasaGroups.has(madrasaKey)) {
+              madrasaGroups.set(madrasaKey, []);
+            }
+            const rank = pt.rank ? parseInt(pt.rank, 10) : null;
+            const grade = pt.grade || null;
+            madrasaGroups.get(madrasaKey).push({
+              reg_no: pt.reg_no,
+              rank,
+              grade,
+              points: getMadrasaResultPoints(rank, grade),
+              total_score: pt.total_score !== null && pt.total_score !== undefined && pt.total_score !== '' ? Number(pt.total_score) : null,
+              judge1: pt.judge1,
+              judge2: pt.judge2,
+              judge3: pt.judge3,
+              name: profile.name || `Participant #${pt.reg_no}`,
+              unit: profile.unit || '—',
+              madrasa: profile.madrasa || '',
+              remarks: pt.remarks || null,
+            });
+          });
+
+          madrasaGroups.forEach((members, madrasaKey) => {
+            members.sort((a, b) => (Number(a.reg_no) || 0) - (Number(b.reg_no) || 0));
+
+            const savedLeaderReg = typeof window !== 'undefined'
+              ? localStorage.getItem(`sargolsav_group_leader_${item.code}_${madrasaKey}`)
+              : null;
+
+            let leader = members.find((m) => m.remarks && String(m.remarks).includes('[LEADER]'));
+            if (!leader && savedLeaderReg) {
+              leader = members.find((m) => String(m.reg_no) === String(savedLeaderReg));
+            }
+            if (!leader) {
+              leader = members[0];
+            }
+
+            const scoredMember = members.find(
+              (m) => m.rank !== null || m.grade !== null || (m.total_score !== null && m.total_score > 0)
+            ) || leader;
+
+            merged.push({
+              reg_no: leader.reg_no,
+              selectedRegNo: leader.reg_no,
+              rank: scoredMember.rank,
+              grade: scoredMember.grade,
+              points: getMadrasaResultPoints(scoredMember.rank, scoredMember.grade),
+              total_score: scoredMember.total_score,
+              judge1: scoredMember.judge1,
+              judge2: scoredMember.judge2,
+              judge3: scoredMember.judge3,
+              name: leader.name,
+              unit: leader.unit,
+              madrasa: leader.madrasa,
+              madrasaKey,
+              isGroupTeam: true,
+              teamSize: members.length,
+              teamMembers: members,
+            });
+          });
+        } else {
+          merged = participations.map((pt) => {
+            const profile = pMap.get(String(pt.reg_no)) || {};
+            const rank = pt.rank ? parseInt(pt.rank, 10) : null;
+            const grade = pt.grade || null;
+            return {
+              reg_no: pt.reg_no,
+              rank,
+              grade,
+              points: getMadrasaResultPoints(rank, grade),
+              total_score: pt.total_score !== null && pt.total_score !== undefined && pt.total_score !== '' ? Number(pt.total_score) : null,
+              judge1: pt.judge1,
+              judge2: pt.judge2,
+              judge3: pt.judge3,
+              name: profile.name || `Participant #${pt.reg_no}`,
+              unit: profile.unit || '—',
+              madrasa: profile.madrasa || '',
+            };
+          });
+        }
 
         // Include all participants who have rank, grade, OR total_score > 0 (or where judges entered marks)
         const qualified = merged.filter((r) => {
@@ -112,10 +184,14 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
         // Sort: Admin custom order -> Rank (1, 2, 3) -> Total Score descending -> Points descending -> Grade -> Reg No
         qualified.sort((a, b) => {
           if (orderMap) {
-            const hasA = orderMap.has(String(a.reg_no));
-            const hasB = orderMap.has(String(b.reg_no));
-            if (hasA && hasB && orderMap.get(String(a.reg_no)) !== orderMap.get(String(b.reg_no))) {
-              return orderMap.get(String(a.reg_no)) - orderMap.get(String(b.reg_no));
+            const aKey = a.madrasaKey || String(a.reg_no);
+            const bKey = b.madrasaKey || String(b.reg_no);
+            const hasA = orderMap.has(aKey) || orderMap.has(String(a.reg_no));
+            const hasB = orderMap.has(bKey) || orderMap.has(String(b.reg_no));
+            if (hasA && hasB) {
+              const idxA = orderMap.has(aKey) ? orderMap.get(aKey) : orderMap.get(String(a.reg_no));
+              const idxB = orderMap.has(bKey) ? orderMap.get(bKey) : orderMap.get(String(b.reg_no));
+              if (idxA !== idxB) return idxA - idxB;
             }
           }
           return comparePublishedResults(a, b);
@@ -372,6 +448,11 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                         <div>
                           <h4 className="font-bold text-sm sm:text-base text-amber-950 leading-snug">
                             {winner.name}
+                            {winner.isGroupTeam && (
+                              <span className="text-xs font-semibold text-amber-900 ml-1.5 align-middle">
+                                & Team ({winner.teamSize})
+                              </span>
+                            )}
                           </h4>
                           <p className="text-xs font-semibold text-amber-800 mt-0.5 truncate">
                             Madrasa: {winner.unit}
@@ -414,6 +495,11 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                         <div>
                           <h4 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">
                             {winner.name}
+                            {winner.isGroupTeam && (
+                              <span className="text-xs font-semibold text-slate-700 ml-1.5 align-middle">
+                                & Team ({winner.teamSize})
+                              </span>
+                            )}
                           </h4>
                           <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">
                             Madrasa: {winner.unit}
@@ -456,6 +542,11 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                         <div>
                           <h4 className="font-bold text-sm sm:text-base text-orange-950 leading-snug">
                             {winner.name}
+                            {winner.isGroupTeam && (
+                              <span className="text-xs font-semibold text-orange-900 ml-1.5 align-middle">
+                                & Team ({winner.teamSize})
+                              </span>
+                            )}
                           </h4>
                           <p className="text-xs font-semibold text-orange-800 mt-0.5 truncate">
                             Madrasa: {winner.unit}
@@ -536,7 +627,17 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
                               #{row.reg_no}
                             </td>
                             <td className="py-2.5 px-4 font-bold text-[#1B254B]">
-                              {row.name}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{row.name}</span>
+                                {row.isGroupTeam && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md cursor-help"
+                                    title={row.teamMembers?.map((m) => `#${m.reg_no} ${m.name}`).join('\n')}
+                                  >
+                                    👥 Team of {row.teamSize}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-2.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
                               {row.unit}

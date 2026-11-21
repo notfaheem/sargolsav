@@ -148,9 +148,14 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                 </td>
                 <td className="border border-slate-300 py-3 px-3 text-left font-bold text-[#1B254B] leading-relaxed">
                   {row.name}
+                  {(row.isGroupTeam || item.mode === 'GROUP' || item.type === 'GROUP') && (
+                    <span className="font-normal text-slate-500 ml-1.5 text-[10px]">
+                      & Team
+                    </span>
+                  )}
                 </td>
                 <td className="border border-slate-300 py-3 px-3 text-left text-slate-700 font-semibold leading-relaxed">
-                  {row.unit}
+                  {row.madrasa || row.unit}
                 </td>
                 <td className="border border-slate-300 py-3 px-3 text-center font-bold whitespace-nowrap">
                   {row.grade ? `Grade ${row.grade}` : '-'}

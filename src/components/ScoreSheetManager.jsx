@@ -120,6 +120,11 @@ export default function ScoreSheetManager({ onShowToast }) {
     setIsLoadingScoresheet(true);
 
     try {
+      const itemObj = items.find((i) => i.code === selectedItemCode);
+      const isGroupItem = Boolean(
+        itemObj && (itemObj.mode?.toUpperCase() === 'GROUP' || itemObj.type?.toUpperCase() === 'GROUP')
+      );
+
       // 1. Fetch participations for this item_code
       const { data: participations, error: ptError } = await supabase
         .from('participations')
@@ -148,27 +153,113 @@ export default function ScoreSheetManager({ onShowToast }) {
         pMap.set(String(p.reg_no), p);
       });
 
-      // 3. Merge data
-      const merged = participations.map((pt) => {
-        const profile = pMap.get(String(pt.reg_no)) || {};
-        return {
-          id: pt.id,
-          reg_no: pt.reg_no,
-          item_code: pt.item_code,
-          chest_no: pt.chest_no || '',
-          name: profile.name || `Participant #${pt.reg_no}`,
-          unit: profile.unit || '—',
-          madrasa: profile.madrasa || '',
-          judge1: pt.judge1,
-          judge2: pt.judge2,
-          judge3: pt.judge3,
-          total_score: pt.total_score,
-          percentage: pt.percentage,
-          grade: pt.grade,
-          rank: pt.rank,
-          points: pt.points ?? 0,
-        };
-      });
+      // 3. Merge data (single rows vs group team grouping)
+      let merged = [];
+
+      if (isGroupItem) {
+        const madrasaGroups = new Map();
+        participations.forEach((pt) => {
+          const profile = pMap.get(String(pt.reg_no)) || {};
+          const madrasaKey = (profile.madrasa || profile.unit || 'Unknown').trim().toUpperCase();
+          if (!madrasaGroups.has(madrasaKey)) {
+            madrasaGroups.set(madrasaKey, []);
+          }
+          madrasaGroups.get(madrasaKey).push({
+            id: pt.id,
+            reg_no: pt.reg_no,
+            item_code: pt.item_code,
+            chest_no: pt.chest_no || '',
+            name: profile.name || `Participant #${pt.reg_no}`,
+            unit: profile.unit || '—',
+            madrasa: profile.madrasa || '',
+            judge1: pt.judge1,
+            judge2: pt.judge2,
+            judge3: pt.judge3,
+            total_score: pt.total_score,
+            percentage: pt.percentage,
+            grade: pt.grade,
+            rank: pt.rank,
+            points: pt.points ?? 0,
+            remarks: pt.remarks || null,
+          });
+        });
+
+        madrasaGroups.forEach((members, madrasaKey) => {
+          // Sort team members by Number(reg_no) ascending
+          members.sort((a, b) => (Number(a.reg_no) || 0) - (Number(b.reg_no) || 0));
+
+          // Determine leader / representative:
+          // 1. Remarks contain '[LEADER]'
+          // 2. Saved localStorage representative
+          // 3. Lowest reg_no
+          const savedLeaderReg = typeof window !== 'undefined'
+            ? localStorage.getItem(`sargolsav_group_leader_${selectedItemCode}_${madrasaKey}`)
+            : null;
+
+          let leader = members.find((m) => m.remarks && String(m.remarks).includes('[LEADER]'));
+          if (!leader && savedLeaderReg) {
+            leader = members.find((m) => String(m.reg_no) === String(savedLeaderReg));
+          }
+          if (!leader) {
+            leader = members[0];
+          }
+
+          // Team scores from member with scores, or leader
+          const scoredMember = members.find(
+            (m) => m.total_score !== null || m.rank !== null || m.grade !== null || m.chest_no
+          ) || leader;
+
+          merged.push({
+            id: leader.id,
+            reg_no: leader.reg_no,
+            selectedRegNo: leader.reg_no,
+            item_code: selectedItemCode,
+            chest_no: scoredMember.chest_no || '',
+            name: leader.name,
+            unit: leader.unit,
+            madrasa: leader.madrasa,
+            madrasaKey,
+            isGroupTeam: true,
+            teamMembers: members.map((m) => ({
+              id: m.id,
+              reg_no: m.reg_no,
+              name: m.name,
+              unit: m.unit,
+              madrasa: m.madrasa,
+              remarks: m.remarks,
+            })),
+            judge1: scoredMember.judge1,
+            judge2: scoredMember.judge2,
+            judge3: scoredMember.judge3,
+            total_score: scoredMember.total_score,
+            percentage: scoredMember.percentage,
+            grade: scoredMember.grade,
+            rank: scoredMember.rank,
+            points: scoredMember.points ?? 0,
+          });
+        });
+      } else {
+        merged = participations.map((pt) => {
+          const profile = pMap.get(String(pt.reg_no)) || {};
+          return {
+            id: pt.id,
+            reg_no: pt.reg_no,
+            item_code: pt.item_code,
+            chest_no: pt.chest_no || '',
+            name: profile.name || `Participant #${pt.reg_no}`,
+            unit: profile.unit || '—',
+            madrasa: profile.madrasa || '',
+            judge1: pt.judge1,
+            judge2: pt.judge2,
+            judge3: pt.judge3,
+            total_score: pt.total_score,
+            percentage: pt.percentage,
+            grade: pt.grade,
+            rank: pt.rank,
+            points: pt.points ?? 0,
+          };
+        });
+      }
 
       // Check for saved custom order for this item
       const savedOrderJson = typeof window !== 'undefined' ? localStorage.getItem(`sargolsav_order_${selectedItemCode}`) : null;
@@ -177,16 +268,20 @@ export default function ScoreSheetManager({ onShowToast }) {
         try {
           const parsedOrder = JSON.parse(savedOrderJson);
           orderMap = new Map();
-          parsedOrder.forEach((reg, idx) => orderMap.set(String(reg), idx));
+          parsedOrder.forEach((key, idx) => orderMap.set(String(key), idx));
         } catch (e) {}
       }
 
       if (orderMap) {
         merged.sort((a, b) => {
-          const hasA = orderMap.has(String(a.reg_no));
-          const hasB = orderMap.has(String(b.reg_no));
+          const aKey = a.madrasaKey || String(a.reg_no);
+          const bKey = b.madrasaKey || String(b.reg_no);
+          const hasA = orderMap.has(aKey) || orderMap.has(String(a.reg_no));
+          const hasB = orderMap.has(bKey) || orderMap.has(String(b.reg_no));
           if (hasA && hasB) {
-            return orderMap.get(String(a.reg_no)) - orderMap.get(String(b.reg_no));
+            const idxA = orderMap.has(aKey) ? orderMap.get(aKey) : orderMap.get(String(a.reg_no));
+            const idxB = orderMap.has(bKey) ? orderMap.get(bKey) : orderMap.get(String(b.reg_no));
+            if (idxA !== idxB) return idxA - idxB;
           }
           if (hasA && !hasB) return -1;
           if (!hasA && hasB) return 1;
@@ -216,7 +311,7 @@ export default function ScoreSheetManager({ onShowToast }) {
 
       logger.success(
         'FETCH_SCORESHEET',
-        `Loaded score sheet for Item #${selectedItemCode} (${calculated.length} entries)`
+        `Loaded score sheet for Item #${selectedItemCode} (${calculated.length} entries, isGroup: ${isGroupItem})`
       );
     } catch (err) {
       console.error('Error fetching scoresheet:', err);
@@ -227,7 +322,7 @@ export default function ScoreSheetManager({ onShowToast }) {
     } finally {
       setIsLoadingScoresheet(false);
     }
-  }, [selectedItemCode, enforceMinRule, onShowToast]);
+  }, [items, selectedItemCode, enforceMinRule, onShowToast]);
 
   useEffect(() => {
     fetchScoresheet();
@@ -237,7 +332,11 @@ export default function ScoreSheetManager({ onShowToast }) {
   const handleScoreChange = (regNo, field, value) => {
     setRows((prevRows) => {
       const updated = prevRows.map((r) => {
-        if (r.reg_no === regNo) {
+        const isMatch =
+          String(r.reg_no) === String(regNo) ||
+          String(r.selectedRegNo) === String(regNo) ||
+          (r.isGroupTeam && r.teamMembers?.some((m) => String(m.reg_no) === String(regNo)));
+        if (isMatch) {
           return {
             ...r,
             [field]: value === '' ? null : value,
@@ -253,15 +352,56 @@ export default function ScoreSheetManager({ onShowToast }) {
   // Handle Chest No change
   const handleChestNoChange = (regNo, val) => {
     setRows((prev) =>
-      prev.map((r) => (r.reg_no === regNo ? { ...r, chest_no: val } : r))
+      prev.map((r) => {
+        const isMatch =
+          String(r.reg_no) === String(regNo) ||
+          String(r.selectedRegNo) === String(regNo) ||
+          (r.isGroupTeam && r.teamMembers?.some((m) => String(m.reg_no) === String(regNo)));
+        return isMatch ? { ...r, chest_no: val } : r;
+      })
     );
+  };
+
+  // Switch team representative (leader) for group items
+  const handleRepresentativeChange = (madrasaKey, newRegNo) => {
+    setRows((prevRows) => {
+      const updated = prevRows.map((r) => {
+        const isMatch =
+          r.madrasaKey === madrasaKey ||
+          (r.isGroupTeam && r.teamMembers?.some((m) => String(m.reg_no) === String(newRegNo)));
+        if (isMatch) {
+          const selectedMember = r.teamMembers?.find(
+            (m) => String(m.reg_no) === String(newRegNo)
+          );
+          if (selectedMember) {
+            if (typeof window !== 'undefined' && selectedItemCode) {
+              try {
+                localStorage.setItem(
+                  `sargolsav_group_leader_${selectedItemCode}_${madrasaKey || r.madrasaKey}`,
+                  String(newRegNo)
+                );
+              } catch (e) {}
+            }
+            return {
+              ...r,
+              id: selectedMember.id,
+              reg_no: selectedMember.reg_no,
+              name: selectedMember.name,
+              selectedRegNo: selectedMember.reg_no,
+            };
+          }
+        }
+        return r;
+      });
+      return calculateScoresheet(updated, enforceMinRule);
+    });
   };
 
   // Helper to persist current row order for the active item
   const persistOrder = (updatedRows) => {
     if (typeof window !== 'undefined' && selectedItemCode) {
       try {
-        const order = updatedRows.map((r) => r.reg_no);
+        const order = updatedRows.map((r) => r.madrasaKey || String(r.reg_no));
         localStorage.setItem(`sargolsav_order_${selectedItemCode}`, JSON.stringify(order));
       } catch (e) {}
     }
@@ -329,34 +469,89 @@ export default function ScoreSheetManager({ onShowToast }) {
 
     try {
       const calculated = calculateScoresheet(rows, enforceMinRule);
+      const isGroupItem = Boolean(
+        currentItem &&
+        (currentItem.mode?.toUpperCase() === 'GROUP' || currentItem.type?.toUpperCase() === 'GROUP')
+      );
 
-      // Bulk update participations rows
-      const updates = calculated.map((r) => ({
-        id: r.id,
-        item_code: selectedItemCode,
-        reg_no: r.reg_no,
-        chest_no: r.chest_no || null,
-        judge1: r.judge1,
-        judge2: r.judge2,
-        judge3: r.judge3,
-        total_score: r.total_score,
-        percentage: r.percentage,
-        grade: r.grade,
-        rank: r.rank,
-        points: r.points ?? 0,
-      }));
+      let updates = [];
+      if (isGroupItem) {
+        calculated.forEach((r) => {
+          const leaderRegNo = String(r.selectedRegNo || r.reg_no);
+          if (Array.isArray(r.teamMembers) && r.teamMembers.length > 0) {
+            r.teamMembers.forEach((m) => {
+              const isLeader = String(m.reg_no) === leaderRegNo;
+              updates.push({
+                id: m.id,
+                item_code: selectedItemCode,
+                reg_no: m.reg_no,
+                chest_no: r.chest_no || null,
+                judge1: r.judge1,
+                judge2: r.judge2,
+                judge3: r.judge3,
+                total_score: r.total_score,
+                percentage: r.percentage,
+                grade: r.grade,
+                rank: r.rank,
+                points: r.points ?? 0,
+                remarks: isLeader ? '[LEADER]' : null,
+              });
+            });
+          } else {
+            updates.push({
+              id: r.id,
+              item_code: selectedItemCode,
+              reg_no: r.reg_no,
+              chest_no: r.chest_no || null,
+              judge1: r.judge1,
+              judge2: r.judge2,
+              judge3: r.judge3,
+              total_score: r.total_score,
+              percentage: r.percentage,
+              grade: r.grade,
+              rank: r.rank,
+              points: r.points ?? 0,
+              remarks: '[LEADER]',
+            });
+          }
+        });
+      } else {
+        updates = calculated.map((r) => ({
+          id: r.id,
+          item_code: selectedItemCode,
+          reg_no: r.reg_no,
+          chest_no: r.chest_no || null,
+          judge1: r.judge1,
+          judge2: r.judge2,
+          judge3: r.judge3,
+          total_score: r.total_score,
+          percentage: r.percentage,
+          grade: r.grade,
+          rank: r.rank,
+          points: r.points ?? 0,
+        }));
+      }
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('participations')
         .upsert(updates, { onConflict: 'id' });
 
-      if (error) throw error;
+      if (error && error.code === '42703') {
+        // Fallback: remarks column does not exist yet
+        const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
+        const retryRes = await supabase
+          .from('participations')
+          .upsert(strippedUpdates, { onConflict: 'id' });
+        if (retryRes.error) throw retryRes.error;
+      } else if (error) {
+        throw error;
+      }
 
       persistOrder(calculated);
 
       logger.success(
         'SAVE_DRAFT_SCORES',
-        `Draft scores saved for Item #${selectedItemCode} (${updates.length} rows)`,
+        `Draft scores saved for Item #${selectedItemCode} (${updates.length} records updated across ${calculated.length} entries)`,
         { itemCode: selectedItemCode }
       );
 
@@ -382,27 +577,82 @@ export default function ScoreSheetManager({ onShowToast }) {
     setIsPublishing(true);
 
     try {
-      // 1. Save all participation scores & overrides
-      const updates = verifiedRows.map((r) => ({
-        id: r.id,
-        item_code: selectedItemCode,
-        reg_no: r.reg_no,
-        chest_no: r.chest_no || null,
-        judge1: r.judge1,
-        judge2: r.judge2,
-        judge3: r.judge3,
-        total_score: r.total_score,
-        percentage: r.percentage,
-        grade: r.grade,
-        rank: r.rank,
-        points: r.points ?? 0,
-      }));
+      const isGroupItem = Boolean(
+        currentItem &&
+        (currentItem.mode?.toUpperCase() === 'GROUP' || currentItem.type?.toUpperCase() === 'GROUP')
+      );
 
-      const { error: ptError } = await supabase
+      let updates = [];
+      if (isGroupItem) {
+        verifiedRows.forEach((r) => {
+          const leaderRegNo = String(r.selectedRegNo || r.reg_no);
+          if (Array.isArray(r.teamMembers) && r.teamMembers.length > 0) {
+            r.teamMembers.forEach((m) => {
+              const isLeader = String(m.reg_no) === leaderRegNo;
+              updates.push({
+                id: m.id,
+                item_code: selectedItemCode,
+                reg_no: m.reg_no,
+                chest_no: r.chest_no || null,
+                judge1: r.judge1,
+                judge2: r.judge2,
+                judge3: r.judge3,
+                total_score: r.total_score,
+                percentage: r.percentage,
+                grade: r.grade,
+                rank: r.rank,
+                points: r.points ?? 0,
+                remarks: isLeader ? '[LEADER]' : null,
+              });
+            });
+          } else {
+            updates.push({
+              id: r.id,
+              item_code: selectedItemCode,
+              reg_no: r.reg_no,
+              chest_no: r.chest_no || null,
+              judge1: r.judge1,
+              judge2: r.judge2,
+              judge3: r.judge3,
+              total_score: r.total_score,
+              percentage: r.percentage,
+              grade: r.grade,
+              rank: r.rank,
+              points: r.points ?? 0,
+              remarks: '[LEADER]',
+            });
+          }
+        });
+      } else {
+        updates = verifiedRows.map((r) => ({
+          id: r.id,
+          item_code: selectedItemCode,
+          reg_no: r.reg_no,
+          chest_no: r.chest_no || null,
+          judge1: r.judge1,
+          judge2: r.judge2,
+          judge3: r.judge3,
+          total_score: r.total_score,
+          percentage: r.percentage,
+          grade: r.grade,
+          rank: r.rank,
+          points: r.points ?? 0,
+        }));
+      }
+
+      let { error: ptError } = await supabase
         .from('participations')
         .upsert(updates, { onConflict: 'id' });
 
-      if (ptError) throw ptError;
+      if (ptError && ptError.code === '42703') {
+        const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
+        const retryRes = await supabase
+          .from('participations')
+          .upsert(strippedUpdates, { onConflict: 'id' });
+        if (retryRes.error) throw retryRes.error;
+      } else if (ptError) {
+        throw ptError;
+      }
 
       // 2. Mark item as published
       const now = new Date().toISOString();
@@ -417,7 +667,7 @@ export default function ScoreSheetManager({ onShowToast }) {
 
       logger.success(
         'PUBLISH_RESULT',
-        `Item #${selectedItemCode} published to live portal!`,
+        `Item #${selectedItemCode} published to live portal! (${updates.length} records updated)`,
         { itemCode: selectedItemCode, publishedAt: now }
       );
 
@@ -534,27 +784,36 @@ export default function ScoreSheetManager({ onShowToast }) {
     }
   };
 
-  // Remove participant from item
+  // Remove participant or group team from item
   const handleRemoveParticipant = async () => {
     if (!removingRow || isRemoving) return;
     setIsRemoving(true);
 
     try {
+      const regNosToDelete = removingRow.teamMembers && removingRow.teamMembers.length > 0
+        ? removingRow.teamMembers.map((m) => m.reg_no)
+        : [removingRow.reg_no];
+
       const { error } = await supabase
         .from('participations')
         .delete()
         .eq('item_code', selectedItemCode)
-        .eq('reg_no', removingRow.reg_no);
+        .in('reg_no', regNosToDelete);
 
       if (error) throw error;
 
       logger.warn(
         'REMOVE_FROM_ITEM',
-        `Removed participant #${removingRow.reg_no} from Item #${selectedItemCode}`
+        `Removed participant(s) [${regNosToDelete.join(', ')}] from Item #${selectedItemCode}`
       );
 
       if (onShowToast) {
-        onShowToast(`Removed participant #${removingRow.reg_no} from this item.`, 'success');
+        onShowToast(
+          removingRow.isGroupTeam
+            ? `Removed ${removingRow.name}'s team from this item.`
+            : `Removed participant #${removingRow.reg_no} from this item.`,
+          'success'
+        );
       }
 
       setRemovingRow(null);
@@ -853,7 +1112,7 @@ export default function ScoreSheetManager({ onShowToast }) {
                     const isRanked = row.rank !== null && row.rank !== undefined;
                     return (
                       <tr
-                        key={row.reg_no}
+                        key={row.madrasaKey || row.reg_no}
                         className={`hover:bg-slate-50/80 transition-colors ${
                           row.rank === 1
                             ? 'bg-amber-50/40'
@@ -906,9 +1165,24 @@ export default function ScoreSheetManager({ onShowToast }) {
 
                         {/* Reg No */}
                         <td className="py-2.5 px-3 font-mono font-bold text-[#1B254B] whitespace-nowrap">
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
-                            #{row.reg_no}
-                          </span>
+                          {row.isGroupTeam && row.teamMembers && row.teamMembers.length > 1 ? (
+                            <select
+                              value={row.selectedRegNo || row.reg_no}
+                              onChange={(e) => handleRepresentativeChange(row.madrasaKey, e.target.value)}
+                              className="bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-xs font-mono font-bold text-[#1B254B] focus:bg-white focus:ring-1 focus:ring-[#1B254B] max-w-[130px] cursor-pointer"
+                              title="Switch team representative"
+                            >
+                              {row.teamMembers.map((m) => (
+                                <option key={m.reg_no} value={m.reg_no}>
+                                  #{m.reg_no} - {m.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
+                              #{row.reg_no}
+                            </span>
+                          )}
                         </td>
 
                         {/* Participant & Unit */}
@@ -916,8 +1190,16 @@ export default function ScoreSheetManager({ onShowToast }) {
                           <p className="font-bold text-[#1B254B] leading-tight truncate max-w-[200px]">
                             {row.name}
                           </p>
+                          {row.isGroupTeam && row.teamMembers && row.teamMembers.length > 0 && (
+                            <div
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md mt-0.5 cursor-help"
+                              title={row.teamMembers.map((m) => `#${m.reg_no} ${m.name}`).join('\n')}
+                            >
+                              👥 Team of {row.teamMembers.length} members
+                            </div>
+                          )}
                           <p className="text-[11px] text-slate-500 truncate max-w-[200px]">
-                            {row.unit}
+                            {row.madrasa || row.unit}
                           </p>
                         </td>
 
@@ -1226,13 +1508,27 @@ export default function ScoreSheetManager({ onShowToast }) {
               <Trash2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#1B254B]">Remove from Item?</h3>
+              <h3 className="text-base font-bold text-[#1B254B]">
+                {removingRow.isGroupTeam ? 'Remove Team from Item?' : 'Remove from Item?'}
+              </h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Remove participant{' '}
-                <strong className="text-slate-800">
-                  #{removingRow.reg_no} - {removingRow.name}
-                </strong>{' '}
-                from Item #{selectedItemCode}? This will remove their scores for this item.
+                {removingRow.isGroupTeam ? (
+                  <>
+                    Remove{' '}
+                    <strong className="text-slate-800">
+                      {removingRow.name}&apos;s team ({removingRow.madrasa || removingRow.unit})
+                    </strong>{' '}
+                    ({removingRow.teamMembers?.length || 0} members) from Item #{selectedItemCode}? This will remove all their scores for this item.
+                  </>
+                ) : (
+                  <>
+                    Remove participant{' '}
+                    <strong className="text-slate-800">
+                      #{removingRow.reg_no} - {removingRow.name}
+                    </strong>{' '}
+                    from Item #{selectedItemCode}? This will remove their scores for this item.
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">

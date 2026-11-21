@@ -245,7 +245,7 @@ export default function ScoreSheetPdfTemplate({ containerId, item, rows = [] }) 
 
                 {/* REMARKS */}
                 <td className="border border-black py-1 px-2 text-[10px]">
-                  {isPlaceholder ? '' : row.remarks || ''}
+                  {isPlaceholder ? '' : (row.isGroupTeam ? `Team (${row.teamMembers?.length || 0})` : (row.remarks || ''))}
                 </td>
               </tr>
             );

@@ -67,7 +67,8 @@ export function computeUnitStandings(participations = [], participants = [], ite
     const unit = (student?.unit || 'UNASSIGNED').trim().toUpperCase();
     const madrasa = (student?.madrasa || '').trim();
 
-    if (item.mode === 'GROUP') {
+    const isGroupItem = item.mode?.toUpperCase() === 'GROUP' || item.type?.toUpperCase() === 'GROUP';
+    if (isGroupItem) {
       const madrasaKey = madrasa || unit;
       const key = `${item.code}__${madrasaKey}`;
       const pts = getMadrasaResultPoints(part.rank, part.grade);
@@ -279,7 +280,9 @@ export function computeIndividualChampionship(participations = [], participants 
     const stats = getStudentStats(part.reg_no);
     const individualPts = getTotalIndividualPoints(part.rank, part.grade);
 
-    if (item.mode === 'SINGLE') {
+    const isGroupItem = item.mode?.toUpperCase() === 'GROUP' || item.type?.toUpperCase() === 'GROUP';
+
+    if (!isGroupItem) {
       stats.singlePoints += individualPts;
       if (part.rank === 1) stats.rank1Count += 1;
       if (part.rank === 2) stats.rank2Count += 1;
@@ -298,7 +301,7 @@ export function computeIndividualChampionship(participations = [], participants 
           points: individualPts,
         });
       }
-    } else if (item.mode === 'GROUP') {
+    } else {
       // Calculate group tie breaker points according to Manual Page 4:
       // Rank 1 = 3 pts, Rank 2 = 2 pts, Rank 3 = 1 pt.
       // Grade A = 3 pts, Grade B = 2 pts, Grade C = 1 pt.
