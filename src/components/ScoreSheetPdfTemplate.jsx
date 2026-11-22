@@ -1,5 +1,6 @@
 import React from 'react';
 import { SCORESHEET_HEADER_B64, SCORESHEET_FOOTER_B64 } from '../assets/scoresheetAssets';
+import { getCleanMadrasaName } from '../lib/madrasaHelper';
 
 /**
  * Determines whether an item is STAGE or OFF STAGE based on item metadata or conventions.
@@ -245,7 +246,7 @@ export default function ScoreSheetPdfTemplate({ containerId, item, rows = [] }) 
 
                 {/* REMARKS */}
                 <td className="border border-black py-1 px-2 text-[10px]">
-                  {isPlaceholder ? '' : (row.isGroupTeam ? `Team (${row.teamMembers?.length || 0})` : (row.remarks || ''))}
+                  {isPlaceholder ? '' : (row.isGroupTeam ? `${getCleanMadrasaName(row)} Team (${row.teamMembers?.length || 0})` : (row.remarks || ''))}
                 </td>
               </tr>
             );

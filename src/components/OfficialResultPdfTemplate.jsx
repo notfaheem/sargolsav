@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCleanMadrasaName } from '../lib/madrasaHelper';
 
 export default function OfficialResultPdfTemplate({ containerId, item, results = [] }) {
   if (!item) return null;
@@ -155,7 +156,7 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                   )}
                 </td>
                 <td className="border border-slate-300 py-3 px-3 text-left text-slate-700 font-semibold leading-relaxed">
-                  {row.madrasa || row.unit}
+                  {getCleanMadrasaName(row)}
                 </td>
                 <td className="border border-slate-300 py-3 px-3 text-center font-bold whitespace-nowrap">
                   {row.grade ? `Grade ${row.grade}` : '-'}

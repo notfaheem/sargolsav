@@ -222,12 +222,23 @@ export default function PublishPreviewModal({
                         <p className="font-bold text-[#1B254B]">
                           {row.name}
                           {row.isGroupTeam && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded ml-1.5">
-                              👥 Team ({row.teamMembers?.length || 0})
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded ml-1.5 ${
+                                (row.teamMembers?.length || 0) > 5
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                  : 'text-purple-700 bg-purple-50 border border-purple-200'
+                              }`}
+                              title={
+                                (row.teamMembers?.length || 0) > 5
+                                  ? '⚠️ Rule 13 Violation: Exceeds 5 members!'
+                                  : undefined
+                              }
+                            >
+                              {(row.teamMembers?.length || 0) > 5 ? '⚠️' : '👥'} Team ({row.teamMembers?.length || 0})
                             </span>
                           )}
                         </p>
-                        <p className="text-[11px] text-slate-500">{row.unit}</p>
+                        <p className="text-[11px] font-semibold text-slate-500">{row.madrasa || row.unit}</p>
                       </td>
                       <td className="py-2 px-3 font-mono font-semibold">
                         {row.isAbsent ? (

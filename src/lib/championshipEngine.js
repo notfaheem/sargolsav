@@ -69,7 +69,8 @@ export function computeUnitStandings(participations = [], participants = [], ite
 
     const isGroupItem = item.mode?.toUpperCase() === 'GROUP' || item.type?.toUpperCase() === 'GROUP';
     if (isGroupItem) {
-      const madrasaKey = madrasa || unit;
+      const cleanMadrasa = unit && unit !== 'UNASSIGNED' ? unit : (madrasa || 'UNASSIGNED');
+      const madrasaKey = cleanMadrasa;
       const key = `${item.code}__${madrasaKey}`;
       const pts = getMadrasaResultPoints(part.rank, part.grade);
       if (!groupScoresMap.has(key)) {

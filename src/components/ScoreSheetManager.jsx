@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { calculateScoresheet, comparePublishedResults } from '../lib/tabulationEngine';
+import { getCleanMadrasaName, fetchMadrasaUnitMap } from '../lib/madrasaHelper';
 import PublishPreviewModal from './PublishPreviewModal';
 import { CATEGORIES } from './CategorySelector';
 import {
@@ -13,6 +14,7 @@ import {
   UserPlus,
   Trash2,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Layers,
   Search,
@@ -24,10 +26,27 @@ import {
   Sparkles,
   Download,
   Printer,
+  X,
 } from 'lucide-react';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
 import ScoreSheetPdfTemplate from './ScoreSheetPdfTemplate';
 import { downloadResultPdf, downloadScoreSheetPdf } from '../lib/pdfGenerator';
+
+function isRemarksSchemaError(err) {
+  if (!err) return false;
+  const code = String(err.code || '');
+  const msg = String(err.message || '').toLowerCase();
+  const details = String(err.details || '').toLowerCase();
+  const hint = String(err.hint || '').toLowerCase();
+  return (
+    code === '42703' ||
+    code === 'PGRST204' ||
+    msg.includes('remarks') ||
+    msg.includes('schema cache') ||
+    details.includes('remarks') ||
+    hint.includes('remarks')
+  );
+}
 
 export default function ScoreSheetManager({ onShowToast }) {
   // Category & Item selection
@@ -60,6 +79,10 @@ export default function ScoreSheetManager({ onShowToast }) {
   // Delete participant from item confirmation
   const [removingRow, setRemovingRow] = useState(null);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  // Inspect group team members modal state (Rule 13 enforcement)
+  const [inspectingTeam, setInspectingTeam] = useState(null);
+  const [isRemovingTeamMember, setIsRemovingTeamMember] = useState(false);
 
   // Fetch items and settings
   const fetchItemsAndSettings = useCallback(async () => {
@@ -125,6 +148,9 @@ export default function ScoreSheetManager({ onShowToast }) {
         itemObj && (itemObj.mode?.toUpperCase() === 'GROUP' || itemObj.type?.toUpperCase() === 'GROUP')
       );
 
+      // 0. Fetch Madrasa to Unit short-name mapping
+      const madrasaUnitMap = await fetchMadrasaUnitMap(supabase);
+
       // 1. Fetch participations for this item_code
       const { data: participations, error: ptError } = await supabase
         .from('participations')
@@ -160,7 +186,8 @@ export default function ScoreSheetManager({ onShowToast }) {
         const madrasaGroups = new Map();
         participations.forEach((pt) => {
           const profile = pMap.get(String(pt.reg_no)) || {};
-          const madrasaKey = (profile.madrasa || profile.unit || 'Unknown').trim().toUpperCase();
+          const cleanMadrasa = getCleanMadrasaName(profile, madrasaUnitMap);
+          const madrasaKey = cleanMadrasa;
           if (!madrasaGroups.has(madrasaKey)) {
             madrasaGroups.set(madrasaKey, []);
           }
@@ -170,8 +197,9 @@ export default function ScoreSheetManager({ onShowToast }) {
             item_code: pt.item_code,
             chest_no: pt.chest_no || '',
             name: profile.name || `Participant #${pt.reg_no}`,
-            unit: profile.unit || '—',
-            madrasa: profile.madrasa || '',
+            unit: cleanMadrasa,
+            madrasa: cleanMadrasa,
+            rawMadrasa: profile.madrasa || '',
             judge1: pt.judge1,
             judge2: pt.judge2,
             judge3: pt.judge3,
@@ -216,16 +244,16 @@ export default function ScoreSheetManager({ onShowToast }) {
             item_code: selectedItemCode,
             chest_no: scoredMember.chest_no || '',
             name: leader.name,
-            unit: leader.unit,
-            madrasa: leader.madrasa,
+            unit: madrasaKey,
+            madrasa: madrasaKey,
             madrasaKey,
             isGroupTeam: true,
             teamMembers: members.map((m) => ({
               id: m.id,
               reg_no: m.reg_no,
               name: m.name,
-              unit: m.unit,
-              madrasa: m.madrasa,
+              unit: madrasaKey,
+              madrasa: madrasaKey,
               remarks: m.remarks,
             })),
             judge1: scoredMember.judge1,
@@ -241,14 +269,15 @@ export default function ScoreSheetManager({ onShowToast }) {
       } else {
         merged = participations.map((pt) => {
           const profile = pMap.get(String(pt.reg_no)) || {};
+          const cleanMadrasa = getCleanMadrasaName(profile, madrasaUnitMap);
           return {
             id: pt.id,
             reg_no: pt.reg_no,
             item_code: pt.item_code,
             chest_no: pt.chest_no || '',
             name: profile.name || `Participant #${pt.reg_no}`,
-            unit: profile.unit || '—',
-            madrasa: profile.madrasa || '',
+            unit: cleanMadrasa,
+            madrasa: cleanMadrasa,
             judge1: pt.judge1,
             judge2: pt.judge2,
             judge3: pt.judge3,
@@ -474,6 +503,18 @@ export default function ScoreSheetManager({ onShowToast }) {
         (currentItem.mode?.toUpperCase() === 'GROUP' || currentItem.type?.toUpperCase() === 'GROUP')
       );
 
+      // Backup group leader mappings to localStorage
+      if (isGroupItem) {
+        try {
+          calculated.forEach((r) => {
+            const leaderRegNo = String(r.selectedRegNo || r.reg_no);
+            if (r.madrasaKey && leaderRegNo) {
+              localStorage.setItem(`sargolsav_group_leader_${selectedItemCode}_${r.madrasaKey}`, leaderRegNo);
+            }
+          });
+        } catch (e) {}
+      }
+
       let updates = [];
       if (isGroupItem) {
         calculated.forEach((r) => {
@@ -536,15 +577,17 @@ export default function ScoreSheetManager({ onShowToast }) {
         .from('participations')
         .upsert(updates, { onConflict: 'id' });
 
-      if (error && error.code === '42703') {
-        // Fallback: remarks column does not exist yet
-        const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
-        const retryRes = await supabase
-          .from('participations')
-          .upsert(strippedUpdates, { onConflict: 'id' });
-        if (retryRes.error) throw retryRes.error;
-      } else if (error) {
-        throw error;
+      if (error) {
+        if (isRemarksSchemaError(error)) {
+          console.warn('Notice: participations.remarks column/schema cache error, retrying save without remarks:', error);
+          const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
+          const retryRes = await supabase
+            .from('participations')
+            .upsert(strippedUpdates, { onConflict: 'id' });
+          if (retryRes.error) throw retryRes.error;
+        } else {
+          throw error;
+        }
       }
 
       persistOrder(calculated);
@@ -581,6 +624,18 @@ export default function ScoreSheetManager({ onShowToast }) {
         currentItem &&
         (currentItem.mode?.toUpperCase() === 'GROUP' || currentItem.type?.toUpperCase() === 'GROUP')
       );
+
+      // Backup group leader mappings to localStorage
+      if (isGroupItem) {
+        try {
+          verifiedRows.forEach((r) => {
+            const leaderRegNo = String(r.selectedRegNo || r.reg_no);
+            if (r.madrasaKey && leaderRegNo) {
+              localStorage.setItem(`sargolsav_group_leader_${selectedItemCode}_${r.madrasaKey}`, leaderRegNo);
+            }
+          });
+        } catch (e) {}
+      }
 
       let updates = [];
       if (isGroupItem) {
@@ -644,14 +699,17 @@ export default function ScoreSheetManager({ onShowToast }) {
         .from('participations')
         .upsert(updates, { onConflict: 'id' });
 
-      if (ptError && ptError.code === '42703') {
-        const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
-        const retryRes = await supabase
-          .from('participations')
-          .upsert(strippedUpdates, { onConflict: 'id' });
-        if (retryRes.error) throw retryRes.error;
-      } else if (ptError) {
-        throw ptError;
+      if (ptError) {
+        if (isRemarksSchemaError(ptError)) {
+          console.warn('Notice: participations.remarks column/schema cache error, retrying publish without remarks:', ptError);
+          const strippedUpdates = updates.map(({ remarks, ...rest }) => rest);
+          const retryRes = await supabase
+            .from('participations')
+            .upsert(strippedUpdates, { onConflict: 'id' });
+          if (retryRes.error) throw retryRes.error;
+        } else {
+          throw ptError;
+        }
       }
 
       // 2. Mark item as published
@@ -690,6 +748,49 @@ export default function ScoreSheetManager({ onShowToast }) {
       }
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  // Remove a single participant from a group team
+  const handleRemoveSingleMember = async (team, member) => {
+    if (isRemovingTeamMember) return;
+    setIsRemovingTeamMember(true);
+    try {
+      const { error } = await supabase
+        .from('participations')
+        .delete()
+        .eq('item_code', selectedItemCode)
+        .eq('reg_no', member.reg_no);
+
+      if (error) throw error;
+
+      if (onShowToast) {
+        onShowToast(`Removed participant #${member.reg_no} (${member.name}) from Item #${selectedItemCode}.`, 'success');
+      }
+
+      const remaining = (team.teamMembers || []).filter((m) => String(m.reg_no) !== String(member.reg_no));
+      if (remaining.length > 0 && String(team.selectedRegNo || team.reg_no) === String(member.reg_no)) {
+        handleRepresentativeChange(team.madrasaKey, remaining[0].reg_no);
+      }
+
+      if (remaining.length > 0) {
+        setInspectingTeam((prev) => ({
+          ...prev,
+          teamMembers: remaining,
+          selectedRegNo: String(team.selectedRegNo) === String(member.reg_no) ? remaining[0].reg_no : prev.selectedRegNo,
+          reg_no: String(team.reg_no) === String(member.reg_no) ? remaining[0].reg_no : prev.reg_no,
+          name: String(team.reg_no) === String(member.reg_no) ? remaining[0].name : prev.name,
+        }));
+      } else {
+        setInspectingTeam(null);
+      }
+
+      await fetchScoresheet();
+    } catch (err) {
+      console.error('Error removing team member:', err);
+      if (onShowToast) onShowToast(`Failed to remove member: ${err.message}`, 'error');
+    } finally {
+      setIsRemovingTeamMember(false);
     }
   };
 
@@ -1166,18 +1267,27 @@ export default function ScoreSheetManager({ onShowToast }) {
                         {/* Reg No */}
                         <td className="py-2.5 px-3 font-mono font-bold text-[#1B254B] whitespace-nowrap">
                           {row.isGroupTeam && row.teamMembers && row.teamMembers.length > 1 ? (
-                            <select
-                              value={row.selectedRegNo || row.reg_no}
-                              onChange={(e) => handleRepresentativeChange(row.madrasaKey, e.target.value)}
-                              className="bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-xs font-mono font-bold text-[#1B254B] focus:bg-white focus:ring-1 focus:ring-[#1B254B] max-w-[130px] cursor-pointer"
-                              title="Switch team representative"
-                            >
-                              {row.teamMembers.map((m) => (
-                                <option key={m.reg_no} value={m.reg_no}>
-                                  #{m.reg_no} - {m.name}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="relative inline-block">
+                              <div
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-300 font-mono font-bold text-xs text-[#1B254B] shadow-2xs transition-colors cursor-pointer select-none"
+                                title="Click to switch team representative"
+                              >
+                                <span>#{row.selectedRegNo || row.reg_no}</span>
+                                <span className="text-[10px] text-slate-500 font-sans leading-none">▾</span>
+                              </div>
+                              <select
+                                value={row.selectedRegNo || row.reg_no}
+                                onChange={(e) => handleRepresentativeChange(row.madrasaKey, e.target.value)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
+                                title="Switch team representative"
+                              >
+                                {row.teamMembers.map((m) => (
+                                  <option key={m.reg_no} value={m.reg_no}>
+                                    #{m.reg_no} - {m.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           ) : (
                             <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
                               #{row.reg_no}
@@ -1191,14 +1301,32 @@ export default function ScoreSheetManager({ onShowToast }) {
                             {row.name}
                           </p>
                           {row.isGroupTeam && row.teamMembers && row.teamMembers.length > 0 && (
-                            <div
-                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md mt-0.5 cursor-help"
-                              title={row.teamMembers.map((m) => `#${m.reg_no} ${m.name}`).join('\n')}
+                            <button
+                              type="button"
+                              onClick={() => setInspectingTeam(row)}
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md mt-0.5 transition-all cursor-pointer ${
+                                row.teamMembers.length > 5
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 shadow-2xs'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                              }`}
+                              title={`${row.teamMembers.map((m, i) => `${i + 1}. #${m.reg_no} - ${m.name}${String(m.reg_no) === String(row.selectedRegNo || row.reg_no) ? ' [LEADER]' : ''}`).join('\n')}${
+                                row.teamMembers.length > 5 ? '\n⚠️ WARNING: Exceeds 5 members (Rule 13 violation)!' : '\nClick to view & manage team members'
+                              }`}
                             >
-                              👥 Team of {row.teamMembers.length} members
-                            </div>
+                              {row.teamMembers.length > 5 ? (
+                                <>
+                                  <span className="text-amber-700">⚠️</span>
+                                  <span>Team of {row.teamMembers.length} members (Max 5)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>👥</span>
+                                  <span>Team of {row.teamMembers.length} members</span>
+                                </>
+                              )}
+                            </button>
                           )}
-                          <p className="text-[11px] text-slate-500 truncate max-w-[200px]">
+                          <p className="text-[11px] font-semibold text-slate-500 truncate max-w-[200px] mt-0.5">
                             {row.madrasa || row.unit}
                           </p>
                         </td>
@@ -1548,6 +1676,121 @@ export default function ScoreSheetManager({ onShowToast }) {
               >
                 {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 <span>Remove</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Inspect Team Members Modal (Rule 13 enforcement) */}
+      {inspectingTeam && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-[#1B254B] flex items-center gap-2">
+                  <span>👥</span>
+                  <span>{inspectingTeam.madrasa || inspectingTeam.unit} Team</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Item #{selectedItemCode} • {inspectingTeam.teamMembers?.length || 0} enrolled participants
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectingTeam(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Rule 13 Violation Warning if > 5 */}
+            {inspectingTeam.teamMembers && inspectingTeam.teamMembers.length > 5 && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-xs text-amber-950">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Manual Rule 13 Alert: Maximum 5 Participants Allowed</p>
+                  <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                    This group currently has <strong>{inspectingTeam.teamMembers.length} members</strong>. Please remove extra accidental enrollments using the remove button below to comply with festival rules.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Team Members List */}
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+              {inspectingTeam.teamMembers?.map((m, idx) => {
+                const isLeader = String(m.reg_no) === String(inspectingTeam.selectedRegNo || inspectingTeam.reg_no);
+                return (
+                  <div
+                    key={m.reg_no}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                      isLeader ? 'bg-amber-50/60 border-amber-300' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="font-mono text-xs font-bold text-slate-400 w-4 text-right">
+                        {idx + 1}.
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-[#1B254B]">
+                            #{m.reg_no}
+                          </span>
+                          <span className="font-bold text-xs text-[#1B254B] truncate">
+                            {m.name}
+                          </span>
+                        </div>
+                        {isLeader && (
+                          <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200 text-amber-950 mt-0.5">
+                            ⭐ Active Representative
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!isLeader && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRepresentativeChange(inspectingTeam.madrasaKey, m.reg_no);
+                            setInspectingTeam((prev) => ({
+                              ...prev,
+                              selectedRegNo: m.reg_no,
+                              reg_no: m.reg_no,
+                              name: m.name,
+                            }));
+                          }}
+                          className="px-2 py-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                          title="Set as team representative"
+                        >
+                          Set as Rep
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={isRemovingTeamMember}
+                        onClick={() => handleRemoveSingleMember(inspectingTeam, m)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                        title="Remove student from this group item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInspectingTeam(null)}
+                className="px-5 py-2 text-xs font-bold rounded-xl bg-[#1B254B] text-white hover:bg-navy-800 transition-colors cursor-pointer shadow-xs"
+              >
+                Done
               </button>
             </div>
           </div>

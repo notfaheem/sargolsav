@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import OfficialResultPdfTemplate from './OfficialResultPdfTemplate';
 import { downloadResultPdf } from '../lib/pdfGenerator';
 import { comparePublishedResults, getMadrasaResultPoints } from '../lib/tabulationEngine';
+import { getCleanMadrasaName, fetchMadrasaUnitMap } from '../lib/madrasaHelper';
 import { logAnalyticsEvent } from '../lib/analytics';
 import {
   X,
@@ -63,6 +64,8 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
 
         if (pError) throw pError;
 
+        const madrasaUnitMap = await fetchMadrasaUnitMap(supabase);
+
         const pMap = new Map();
         (participants || []).forEach((p) => {
           pMap.set(String(p.reg_no), p);
@@ -78,7 +81,8 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
           const madrasaGroups = new Map();
           participations.forEach((pt) => {
             const profile = pMap.get(String(pt.reg_no)) || {};
-            const madrasaKey = (profile.madrasa || profile.unit || 'Unknown').trim().toUpperCase();
+            const cleanMadrasa = getCleanMadrasaName(profile, madrasaUnitMap);
+            const madrasaKey = cleanMadrasa;
             if (!madrasaGroups.has(madrasaKey)) {
               madrasaGroups.set(madrasaKey, []);
             }
@@ -94,8 +98,8 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
               judge2: pt.judge2,
               judge3: pt.judge3,
               name: profile.name || `Participant #${pt.reg_no}`,
-              unit: profile.unit || '—',
-              madrasa: profile.madrasa || '',
+              unit: cleanMadrasa,
+              madrasa: cleanMadrasa,
               remarks: pt.remarks || null,
             });
           });
@@ -130,8 +134,8 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
               judge2: scoredMember.judge2,
               judge3: scoredMember.judge3,
               name: leader.name,
-              unit: leader.unit,
-              madrasa: leader.madrasa,
+              unit: madrasaKey,
+              madrasa: madrasaKey,
               madrasaKey,
               isGroupTeam: true,
               teamSize: members.length,
@@ -141,6 +145,7 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
         } else {
           merged = participations.map((pt) => {
             const profile = pMap.get(String(pt.reg_no)) || {};
+            const cleanMadrasa = getCleanMadrasaName(profile, madrasaUnitMap);
             const rank = pt.rank ? parseInt(pt.rank, 10) : null;
             const grade = pt.grade || null;
             return {
@@ -153,8 +158,8 @@ export default function PublicResultModal({ item, isOpen, onClose }) {
               judge2: pt.judge2,
               judge3: pt.judge3,
               name: profile.name || `Participant #${pt.reg_no}`,
-              unit: profile.unit || '—',
-              madrasa: profile.madrasa || '',
+              unit: cleanMadrasa,
+              madrasa: cleanMadrasa,
             };
           });
         }
