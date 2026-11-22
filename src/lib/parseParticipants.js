@@ -106,6 +106,16 @@ function cleanUnitString(str) {
     .trim()
     .toUpperCase();
 
+  if (
+    cleaned.includes('KAMBALAKKALLU') ||
+    cleaned.includes('KAMBALAKALLU') ||
+    cleaned.includes('KAMBLAKALLU') ||
+    cleaned.includes('KAMBALAKKAL') ||
+    cleaned.includes('KAMBLAKAL')
+  ) {
+    return 'KAMBLAKALLU';
+  }
+
   return cleaned.length > 0 ? cleaned : 'UNASSIGNED';
 }
 

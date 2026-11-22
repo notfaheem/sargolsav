@@ -4,6 +4,7 @@ import {
   getTotalIndividualPoints,
   getMadrasaResultPoints,
 } from './tabulationEngine';
+import { normalizeMadrasaSpelling } from './madrasaHelper';
 
 /**
  * Championship & Standings Calculation Engine for Sargolsav 2026.
@@ -64,13 +65,15 @@ export function computeUnitStandings(participations = [], participants = [], ite
   validParticipations.forEach((part) => {
     const item = itemMap.get(part.item_code);
     const student = participantMap.get(part.reg_no);
-    const unit = (student?.unit || 'UNASSIGNED').trim().toUpperCase();
-    const madrasa = (student?.madrasa || '').trim();
+    const rawUnit = (student?.unit || 'UNASSIGNED').trim().toUpperCase();
+    const rawMadrasa = (student?.madrasa || '').trim();
+    const unit = normalizeMadrasaSpelling(rawUnit);
+    const madrasa = normalizeMadrasaSpelling(rawMadrasa);
 
     const isGroupItem = item.mode?.toUpperCase() === 'GROUP' || item.type?.toUpperCase() === 'GROUP';
     if (isGroupItem) {
       const cleanMadrasa = unit && unit !== 'UNASSIGNED' ? unit : (madrasa || 'UNASSIGNED');
-      const madrasaKey = cleanMadrasa;
+      const madrasaKey = normalizeMadrasaSpelling(cleanMadrasa);
       const key = `${item.code}__${madrasaKey}`;
       const pts = getMadrasaResultPoints(part.rank, part.grade);
       if (!groupScoresMap.has(key)) {
@@ -110,7 +113,7 @@ export function computeUnitStandings(participations = [], participants = [], ite
   const unitStatsMap = new Map();
 
   function getOrCreateUnit(unit) {
-    const normalized = (unit || 'UNASSIGNED').trim().toUpperCase();
+    const normalized = normalizeMadrasaSpelling(unit || 'UNASSIGNED');
     if (!unitStatsMap.has(normalized)) {
       unitStatsMap.set(normalized, {
         unit: normalized,
@@ -254,8 +257,8 @@ export function computeIndividualChampionship(participations = [], participants 
       studentMap.set(regNo, {
         regNo,
         name: profile.name || 'Unknown',
-        unit: profile.unit || 'Unknown',
-        madrasa: profile.madrasa || '',
+        unit: normalizeMadrasaSpelling(profile.unit || 'Unknown'),
+        madrasa: normalizeMadrasaSpelling(profile.madrasa || ''),
         category: profile.category || category,
         singlePoints: 0,
         rank1Count: 0,

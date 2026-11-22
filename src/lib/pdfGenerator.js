@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 
 /**
  * Generates an official 2024-style A4 Result PDF for Sargolsav 2026.
- * Renders an off-screen fixed 800px container to canvas, ensuring perfect
+ * Renders an off-screen fixed 780px container to canvas, ensuring perfect
  * Malayalam font rendering and zero mobile-screen layout squishing.
  *
  * @param {string} containerId - DOM ID of the element to render
@@ -32,16 +32,18 @@ export async function downloadResultPdf(containerId, itemCode) {
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
-    windowWidth: 900,
+    windowWidth: 780,
     scrollX: 0,
     scrollY: 0,
   });
 
-  const imgData = canvas.toDataURL('image/png');
+  // Use high-quality JPEG with jsPDF compression for small file sizes (~1 MB instead of 60 MB)
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
   const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
@@ -52,14 +54,14 @@ export async function downloadResultPdf(containerId, itemCode) {
   let position = 0;
 
   // Add first page
-  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+  pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
   heightLeft -= pdfPageHeight;
 
   // Handle multi-page if entries list is long
   while (heightLeft > 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
     heightLeft -= pdfPageHeight;
   }
 
@@ -98,16 +100,18 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
-    windowWidth: 900,
+    windowWidth: 780,
     scrollX: 0,
     scrollY: 0,
   });
 
-  const imgData = canvas.toDataURL('image/png');
+  // Use high-quality JPEG with jsPDF compression
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
   const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
@@ -118,14 +122,14 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
   let position = 0;
 
   // Add first page
-  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+  pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
   heightLeft -= pdfPageHeight;
 
   // Handle multi-page if entries list is long
   while (heightLeft > 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
     heightLeft -= pdfPageHeight;
   }
 
@@ -166,10 +170,12 @@ export async function downloadMultiPagePdf(elementsOrIds, filename = 'Sargolsav_
     );
   }
 
+  // Compress stream to reduce multi-page PDFs from ~60 MB to ~1 MB
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
+    compress: true,
   });
 
   const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
@@ -186,33 +192,32 @@ export async function downloadMultiPagePdf(elementsOrIds, filename = 'Sargolsav_
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      windowWidth: 900,
+      windowWidth: 780,
       scrollX: 0,
       scrollY: 0,
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    // JPEG 0.92 provides virtually indistinguishable quality at a fraction of PNG's size
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
     if (imgHeight > pdfHeight + 2) {
       let heightLeft = imgHeight;
       let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pdfHeight;
 
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
         heightLeft -= pdfHeight;
       }
     } else {
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight));
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight), undefined, 'FAST');
     }
   }
 
   pdf.save(filename);
   return filename;
 }
-
-

@@ -52,15 +52,15 @@ export default function ScoreSheetPdfTemplate({ containerId, item, rows = [] }) 
         position: 'fixed',
         left: '-9999px',
         top: '0',
-        width: '900px',
-        minWidth: '900px',
-        maxWidth: '900px',
+        width: '780px',
+        minWidth: '780px',
+        maxWidth: '780px',
         backgroundColor: '#ffffff',
         zIndex: -9999,
         pointerEvents: 'none',
         boxSizing: 'border-box',
       }}
-      className="w-[900px] min-w-[900px] max-w-[900px] p-8 text-[#1B254B] bg-white font-sans"
+      className="w-[780px] min-w-[780px] max-w-[780px] p-5 text-[#1B254B] bg-white font-sans"
     >
       {/* 1. Official Header Image (Left: Learn Think Dedicate, Center: Sargolsav 2026, Right: CIER) */}
       <div className="w-full flex justify-center mb-5">

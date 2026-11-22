@@ -18,15 +18,15 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
         position: 'fixed',
         left: '-9999px',
         top: '0',
-        width: '900px',
-        minWidth: '900px',
-        maxWidth: '900px',
+        width: '780px',
+        minWidth: '780px',
+        maxWidth: '780px',
         backgroundColor: '#ffffff',
         zIndex: -9999,
         pointerEvents: 'none',
         boxSizing: 'border-box',
       }}
-      className="w-[900px] min-w-[900px] max-w-[900px] p-8 text-[#1B254B] bg-white font-sans"
+      className="w-[780px] min-w-[780px] max-w-[780px] p-5 text-[#1B254B] bg-white font-sans"
     >
       {/* 1. Official Header */}
       <div className="flex items-center justify-between border-b-2 border-[#1B254B] pb-4 mb-4">
@@ -99,28 +99,28 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
       </div>
 
       {/* 3. Official Result Table */}
-      <table className="w-full text-xs text-left border-collapse border border-slate-300">
+      <table className="w-full text-sm text-left border-collapse border border-slate-300">
         <thead>
-          <tr className="bg-[#1B254B] text-white font-bold uppercase text-[10px] tracking-wider">
-            <th className="border border-slate-400 py-3 px-3 text-center w-12 whitespace-nowrap">
+          <tr className="bg-[#1B254B] text-white font-black uppercase text-xs tracking-wider">
+            <th className="border border-slate-400 py-2.5 px-2.5 text-center w-12 whitespace-nowrap">
               SL NO
             </th>
-            <th className="border border-slate-400 py-3 px-3 w-20 text-center font-mono whitespace-nowrap">
+            <th className="border border-slate-400 py-2.5 px-2.5 w-20 text-center font-mono whitespace-nowrap">
               REG NO
             </th>
-            <th className="border border-slate-400 py-3 px-3 text-left">
+            <th className="border border-slate-400 py-2.5 px-3 text-left">
               NAME
             </th>
-            <th className="border border-slate-400 py-3 px-3 text-left">
+            <th className="border border-slate-400 py-2.5 px-3 text-left">
               MADRASA
             </th>
-            <th className="border border-slate-400 py-3 px-3 text-center w-20 whitespace-nowrap">
+            <th className="border border-slate-400 py-2.5 px-2.5 text-center w-24 whitespace-nowrap">
               GRADE
             </th>
-            <th className="border border-slate-400 py-3 px-3 text-center w-28 whitespace-nowrap">
+            <th className="border border-slate-400 py-2.5 px-2.5 text-center w-28 whitespace-nowrap">
               RANK
             </th>
-            <th className="border border-slate-400 px-4 py-3 text-center w-24 whitespace-nowrap">
+            <th className="border border-slate-400 px-3 py-2.5 text-center w-24 whitespace-nowrap">
               SIGN
             </th>
           </tr>
@@ -130,7 +130,7 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
             <tr>
               <td
                 colSpan={7}
-                className="border border-slate-300 py-8 text-center text-slate-500 italic"
+                className="border border-slate-300 py-8 text-center text-slate-500 italic text-sm"
               >
                 No participants recorded for this item.
               </td>
@@ -141,30 +141,30 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                 key={row.reg_no}
                 className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'}
               >
-                <td className="border border-slate-300 py-3 px-3 text-center font-mono font-semibold text-slate-600 whitespace-nowrap">
+                <td className="border border-slate-300 py-2.5 px-2.5 text-center font-mono font-bold text-slate-600 whitespace-nowrap align-middle">
                   {idx + 1}
                 </td>
-                <td className="border border-slate-300 py-3 px-3 text-center font-mono font-bold text-[#1B254B] whitespace-nowrap">
+                <td className="border border-slate-300 py-2.5 px-2.5 text-center font-mono font-black text-[#1B254B] text-sm whitespace-nowrap align-middle">
                   #{row.reg_no}
                 </td>
-                <td className="border border-slate-300 py-3 px-3 text-left font-bold text-[#1B254B] leading-relaxed">
+                <td className="border border-slate-300 py-2.5 px-3 text-left font-bold text-[#1B254B] text-sm leading-snug align-middle">
                   {row.name}
                   {(row.isGroupTeam || item.mode === 'GROUP' || item.type === 'GROUP') && (
-                    <span className="font-normal text-slate-500 ml-1.5 text-[10px]">
+                    <span className="font-normal text-slate-500 ml-1.5 text-xs">
                       & Team
                     </span>
                   )}
                 </td>
-                <td className="border border-slate-300 py-3 px-3 text-left text-slate-700 font-semibold leading-relaxed">
+                <td className="border border-slate-300 py-2.5 px-3 text-left text-slate-800 font-bold text-sm leading-snug align-middle">
                   {getCleanMadrasaName(row)}
                 </td>
-                <td className="border border-slate-300 py-3 px-3 text-center font-bold whitespace-nowrap">
+                <td className="border border-slate-300 py-2.5 px-2.5 text-center font-bold text-sm whitespace-nowrap align-middle">
                   {row.grade ? `Grade ${row.grade}` : '-'}
                 </td>
-                <td className="border border-slate-300 py-3 px-3 text-center font-black whitespace-nowrap">
+                <td className="border border-slate-300 py-2.5 px-2.5 text-center font-black whitespace-nowrap align-middle">
                   {getRankText(row.rank) ? (
                     <span
-                      className={`inline-block px-2.5 py-1 rounded text-[10px] uppercase tracking-wider font-black ${
+                      className={`inline-block px-2.5 py-1 rounded text-xs uppercase tracking-wider font-black ${
                         row.rank === 1
                           ? 'bg-amber-100 text-amber-950 border border-amber-300'
                           : row.rank === 2
@@ -178,8 +178,8 @@ export default function OfficialResultPdfTemplate({ containerId, item, results =
                     <span className="text-slate-400 font-normal">-</span>
                   )}
                 </td>
-                <td className="border border-slate-300 px-4 py-3 align-middle text-center whitespace-nowrap">
-                  <div className="w-12 h-0 border-b border-dashed border-gray-400 mx-auto" />
+                <td className="border border-slate-300 px-3 py-2.5 align-middle text-center whitespace-nowrap">
+                  <div className="w-14 h-0 border-b border-dashed border-gray-400 mx-auto" />
                 </td>
               </tr>
             ))
