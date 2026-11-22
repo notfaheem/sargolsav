@@ -134,3 +134,85 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
   return filename;
 }
 
+/**
+ * Generates an official multi-page A4 PDF from an array of DOM element IDs (or elements).
+ * Each item in the array is rendered onto its own clean A4 page (with internal smooth slicing
+ * if any page exceeds standard A4 height).
+ *
+ * @param {Array<string|HTMLElement>} elementsOrIds - Array of DOM IDs or elements
+ * @param {string} filename - Filename to save as
+ * @returns {Promise<string>} Downloaded filename
+ */
+export async function downloadMultiPagePdf(elementsOrIds, filename = 'Sargolsav_2026_Report.pdf') {
+  const elements = elementsOrIds
+    .map((item) => (typeof item === 'string' ? document.getElementById(item) : item))
+    .filter(Boolean);
+
+  if (elements.length === 0) {
+    throw new Error('No PDF template elements found to render');
+  }
+
+  // Pre-load all images inside templates before canvas capture
+  for (const element of elements) {
+    const images = element.getElementsByTagName('img');
+    await Promise.all(
+      Array.from(images).map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      })
+    );
+  }
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+  const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
+    if (i > 0) {
+      pdf.addPage();
+    }
+
+    const canvas = await html2canvas(element, {
+      scale: 2, // Sharp typography
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: 900,
+      scrollX: 0,
+      scrollY: 0,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    if (imgHeight > pdfHeight + 2) {
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+    } else {
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, imgHeight));
+    }
+  }
+
+  pdf.save(filename);
+  return filename;
+}
+
+
