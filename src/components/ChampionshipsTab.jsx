@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { computeUnitStandings, computeIndividualChampionship } from '../lib/championshipEngine';
-import { fetchMadrasaUnitMap } from '../lib/madrasaHelper';
-import { downloadMultiPagePdf } from '../lib/pdfGenerator';
-import IndividualChampionsPdfTemplate from './IndividualChampionsPdfTemplate';
-import MadrasaStandingsPdfTemplate from './MadrasaStandingsPdfTemplate';
 import Podium from './Podium';
 import UnitBreakdownModal from './UnitBreakdownModal';
 import {
@@ -21,9 +17,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  Download,
-  FileText,
-  Building2,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -43,15 +36,9 @@ export default function ChampionshipsTab() {
   const [items, setItems] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [participations, setParticipations] = useState([]);
-  const [madrasaUnitMap, setMadrasaUnitMap] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-
-  // PDF Export States
-  const [isExportingInd, setIsExportingInd] = useState(false);
-  const [isExportingMadrasa, setIsExportingMadrasa] = useState(false);
-  const [isExportingCurrent, setIsExportingCurrent] = useState(false);
 
   // Selected Unit for breakdown modal
   const [selectedUnitData, setSelectedUnitData] = useState(null);
@@ -71,10 +58,6 @@ export default function ChampionshipsTab() {
       if (itemsErr) throw itemsErr;
       setItems(itemsData || []);
 
-      // Concurrently fetch madrasa unit mapping
-      const map = await fetchMadrasaUnitMap(supabase);
-      setMadrasaUnitMap(map);
-
       if (!itemsData || itemsData.length === 0) {
         setParticipations([]);
         setParticipants([]);
@@ -84,10 +67,10 @@ export default function ChampionshipsTab() {
 
       const publishedCodes = itemsData.map((i) => i.code);
 
-      // 2. Fetch participations strictly for public columns including total_score
+      // 2. Fetch participations strictly for public columns
       const { data: partData, error: partErr } = await supabase
         .from('participations')
-        .select('item_code, reg_no, rank, grade, points, total_score')
+        .select('item_code, reg_no, rank, grade, points')
         .in('item_code', publishedCodes);
 
       if (partErr) throw partErr;
@@ -125,164 +108,18 @@ export default function ChampionshipsTab() {
     return computeUnitStandings(participations, participants, items, null);
   }, [participations, participants, items]);
 
-  // Compute Category-wise Unit Standings for selected category
+  // Compute Category-wise Unit Standings
   const categoryUnitStandings = useMemo(() => {
     return computeUnitStandings(participations, participants, items, selectedCategory);
   }, [participations, participants, items, selectedCategory]);
-
-  // Compute Category-wise Unit Standings for ALL categories (for multi-category PDF report)
-  const standingsByCategory = useMemo(() => {
-    const map = {};
-    CATEGORIES.forEach((cat) => {
-      map[cat.id] = computeUnitStandings(participations, participants, items, cat.id);
-    });
-    return map;
-  }, [participations, participants, items]);
 
   // Compute Individual Championship Standings
   const individualData = useMemo(() => {
     return computeIndividualChampionship(participations, participants, items, selectedCategory);
   }, [participations, participants, items, selectedCategory]);
 
-  // ==========================================
-  // PDF Export Handlers
-  // ==========================================
-
-  // 1. Download Individual Champions PDF (Top 3 for all 5 categories)
-  const handleDownloadIndividualChampions = async () => {
-    if (items.length === 0) return;
-    try {
-      setIsExportingInd(true);
-      const pageIds = CATEGORIES.map((c) => `ind-champ-pdf-page-${c.id}`);
-      await downloadMultiPagePdf(pageIds, 'Sargolsav_2026_Individual_Champions_Top3.pdf');
-    } catch (err) {
-      console.error('Failed to export Individual Champions PDF:', err);
-      alert('Failed to generate Individual Champions PDF. Please try again.');
-    } finally {
-      setIsExportingInd(false);
-    }
-  };
-
-  // 2. Download Complete Madrasa Points PDF (Overall + All Categories)
-  const handleDownloadMadrasaPoints = async () => {
-    if (items.length === 0) return;
-    try {
-      setIsExportingMadrasa(true);
-      const pageIds = [
-        'madrasa-standings-pdf-page-overall',
-        ...CATEGORIES.map((c) => `madrasa-standings-pdf-page-${c.id}`),
-      ];
-      await downloadMultiPagePdf(pageIds, 'Sargolsav_2026_Madrasa_Points_Complete_Report.pdf');
-    } catch (err) {
-      console.error('Failed to export Madrasa Points PDF:', err);
-      alert('Failed to generate Madrasa Points PDF. Please try again.');
-    } finally {
-      setIsExportingMadrasa(false);
-    }
-  };
-
-  // 3. Download Current View PDF (Whichever specific tab/category is active)
-  const handleDownloadCurrentView = async () => {
-    if (items.length === 0) return;
-    try {
-      setIsExportingCurrent(true);
-      if (activeView === 'OVERALL_UNIT') {
-        await downloadMultiPagePdf(
-          ['madrasa-standings-pdf-page-overall'],
-          'Sargolsav_2026_Overall_Madrasa_Standings.pdf'
-        );
-      } else if (activeView === 'CATEGORY_UNIT') {
-        await downloadMultiPagePdf(
-          [`madrasa-standings-pdf-page-${selectedCategory}`],
-          `Sargolsav_2026_${selectedCategory}_Madrasa_Standings.pdf`
-        );
-      } else if (activeView === 'INDIVIDUAL') {
-        await downloadMultiPagePdf(
-          [`ind-champ-pdf-page-${selectedCategory}`],
-          `Sargolsav_2026_${selectedCategory}_Individual_Champions_Top3.pdf`
-        );
-      }
-    } catch (err) {
-      console.error('Failed to export Current View PDF:', err);
-      alert('Failed to generate Current View PDF. Please try again.');
-    } finally {
-      setIsExportingCurrent(false);
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Official A4 Championship PDF Reports Toolbar */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#1B254B] to-slate-900 rounded-3xl p-4 sm:p-5 text-white shadow-md border border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-400 text-amber-950">
-              <Download className="w-3.5 h-3.5" /> Official PDF Exports
-            </span>
-            <span className="text-xs text-slate-300 font-medium hidden sm:inline">
-              Print-ready A4 reports with Malayalam typography & signatures
-            </span>
-          </div>
-          <p className="text-xs text-slate-400">
-            Generate verified Tabulation Committee championship standings and top performer sheets.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleDownloadIndividualChampions}
-            disabled={isExportingInd || isExportingMadrasa || isExportingCurrent || items.length === 0}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-amber-950 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Download Top 3 Individual Champions for all 5 categories"
-          >
-            {isExportingInd ? (
-              <Loader2 className="w-4 h-4 animate-spin text-amber-950" />
-            ) : (
-              <Trophy className="w-4 h-4 text-amber-900" />
-            )}
-            <span>{isExportingInd ? 'Generating...' : '🏆 Individual Champions PDF (Top 3)'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadMadrasaPoints}
-            disabled={isExportingInd || isExportingMadrasa || isExportingCurrent || items.length === 0}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Download Overall and Category-wise Madrasa Standings report"
-          >
-            {isExportingMadrasa ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <Building2 className="w-4 h-4 text-emerald-200" />
-            )}
-            <span>{isExportingMadrasa ? 'Generating...' : '🕌 Madrasa Points PDF (All)'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadCurrentView}
-            disabled={isExportingInd || isExportingMadrasa || isExportingCurrent || items.length === 0}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Download current view as A4 PDF"
-          >
-            {isExportingCurrent ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <FileText className="w-4 h-4 text-slate-300" />
-            )}
-            <span>
-              {isExportingCurrent
-                ? 'Generating...'
-                : activeView === 'OVERALL_UNIT'
-                ? '📄 Download Current View (Overall)'
-                : activeView === 'CATEGORY_UNIT'
-                ? `📄 Download Current View (${selectedCategory})`
-                : `📄 Download Current View (${selectedCategory} Top 3)`}
-            </span>
-          </button>
-        </div>
-      </div>
       {/* 1. Sub-navigation tabs */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-2 sm:p-2.5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
@@ -780,24 +617,6 @@ export default function ChampionshipsTab() {
         unitData={selectedUnitData}
         isOpen={Boolean(selectedUnitData)}
         onClose={() => setSelectedUnitData(null)}
-      />
-
-      {/* Hidden Off-Screen PDF Templates for Tabulation Committee Official Exports */}
-      <IndividualChampionsPdfTemplate
-        containerIdPrefix="ind-champ-pdf"
-        categories={CATEGORIES}
-        items={items}
-        participations={participations}
-        participants={participants}
-        madrasaUnitMap={madrasaUnitMap}
-      />
-
-      <MadrasaStandingsPdfTemplate
-        containerIdPrefix="madrasa-standings-pdf"
-        overallStandings={overallUnitStandings}
-        standingsByCategory={standingsByCategory}
-        categories={CATEGORIES}
-        madrasaUnitMap={madrasaUnitMap}
       />
     </div>
   );
