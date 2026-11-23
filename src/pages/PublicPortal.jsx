@@ -486,7 +486,12 @@ export default function PublicPortal() {
 
         {/* Championships & Podiums Tab (Protected by default-lock) */}
         {activeTab === 'championships' && (
-          <ChampionshipsTab isChampLocked={isChampLocked} isAdmin={false} />
+          <ChampionshipsTab
+            isChampLocked={isChampLocked}
+            isAdmin={false}
+            lockTitle={settings?.manual_overrides?.lock_title}
+            lockMessage={settings?.manual_overrides?.lock_message}
+          />
         )}
 
         {/* Resources Tab */}

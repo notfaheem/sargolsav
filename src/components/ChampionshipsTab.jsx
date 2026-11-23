@@ -25,6 +25,7 @@ import {
   Download,
   Trash2,
   Check,
+  Megaphone,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -38,6 +39,8 @@ const CATEGORIES = [
 export default function ChampionshipsTab({
   isAdmin = false,
   isChampLocked: propIsChampLocked,
+  lockTitle: propLockTitle,
+  lockMessage: propLockMessage,
   onToggleLock,
 }) {
   // Sub-navigation view: 'OVERALL_UNIT' | 'CATEGORY_UNIT' | 'INDIVIDUAL'
@@ -69,6 +72,23 @@ export default function ChampionshipsTab({
       return null;
     }
   });
+
+  // Lock Notice Message Customization State
+  const [lockTitleInput, setLockTitleInput] = useState(() => {
+    return (
+      propLockTitle ||
+      localStorage.getItem('sargolsav_lock_title') ||
+      '⏳ Fetching Overall & Championship Results...'
+    );
+  });
+  const [lockMessageInput, setLockMessageInput] = useState(() => {
+    return (
+      propLockMessage ||
+      localStorage.getItem('sargolsav_lock_message') ||
+      'Final championship standings are currently being verified. Please check back later! (You can still view all Item-wise Results and Resources).'
+    );
+  });
+  const [isSavingLockNotice, setIsSavingLockNotice] = useState(false);
 
   // Admin Edit Mode
   const [isEditMode, setIsEditMode] = useState(false);
@@ -123,6 +143,14 @@ export default function ChampionshipsTab({
         if (overridesObj) {
           setManualOverrides(overridesObj);
           localStorage.setItem('sargolsav_manual_overrides', JSON.stringify(overridesObj));
+          if (overridesObj.lock_title) {
+            setLockTitleInput(overridesObj.lock_title);
+            localStorage.setItem('sargolsav_lock_title', overridesObj.lock_title);
+          }
+          if (overridesObj.lock_message) {
+            setLockMessageInput(overridesObj.lock_message);
+            localStorage.setItem('sargolsav_lock_message', overridesObj.lock_message);
+          }
         }
       }
     } catch (err) {
@@ -392,6 +420,48 @@ export default function ChampionshipsTab({
     }
   };
 
+  // Save Custom Lock Notice Message
+  const handleSaveLockNotice = async () => {
+    setIsSavingLockNotice(true);
+    try {
+      const nextOverrides = {
+        ...(manualOverrides || {}),
+        is_locked: isChampLocked,
+        lock_title: lockTitleInput,
+        lock_message: lockMessageInput,
+      };
+
+      const { error } = await supabase
+        .from('settings')
+        .update({ manual_overrides: nextOverrides })
+        .eq('id', 1);
+
+      if (error) {
+        console.warn('Fallback updating manual_overrides via notice_text...', error.message);
+        await supabase
+          .from('settings')
+          .update({
+            notice_text: `JSON:{"type":"MANUAL_OVERRIDES","data":${JSON.stringify(nextOverrides)}}`,
+          })
+          .eq('id', 1);
+      }
+
+      setManualOverrides(nextOverrides);
+      localStorage.setItem('sargolsav_manual_overrides', JSON.stringify(nextOverrides));
+      localStorage.setItem('sargolsav_lock_title', lockTitleInput);
+      localStorage.setItem('sargolsav_lock_message', lockMessageInput);
+
+      showToast('💾 Locked Championships notice message saved successfully!', 'success');
+    } catch (err) {
+      console.error('Error saving lock notice:', err);
+      localStorage.setItem('sargolsav_lock_title', lockTitleInput);
+      localStorage.setItem('sargolsav_lock_message', lockMessageInput);
+      showToast('Saved notice message locally (offline fallback)', 'info');
+    } finally {
+      setIsSavingLockNotice(false);
+    }
+  };
+
   // Save Manual Overrides to Supabase (Feature 3)
   const handleSaveOverrides = async () => {
     setIsSavingOverrides(true);
@@ -552,15 +622,27 @@ export default function ChampionshipsTab({
   // PUBLIC LOCKED SCREEN: (Feature 1)
   // If not admin AND public lock is enabled, display the fetching/verification card
   if (!isAdmin && isChampLocked) {
+    const activeLockTitle =
+      propLockTitle ||
+      manualOverrides?.lock_title ||
+      localStorage.getItem('sargolsav_lock_title') ||
+      '⏳ Fetching Overall & Championship Results...';
+
+    const activeLockMessage =
+      propLockMessage ||
+      manualOverrides?.lock_message ||
+      localStorage.getItem('sargolsav_lock_message') ||
+      'Final championship standings are currently being verified. Please check back later! (You can still view all Item-wise Results and Resources).';
+
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
         <div className="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-14 text-center space-y-4 shadow-xs max-w-2xl mx-auto my-8">
           <Loader2 className="w-8 h-8 animate-spin text-[#F26430] mx-auto mb-3" />
           <h3 className="text-lg sm:text-xl font-bold text-[#1B254B]">
-            ⏳ Fetching Overall & Championship Results...
+            {activeLockTitle}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-            Final championship standings are currently being verified. Please check back later! (You can still view all Item-wise Results and Resources).
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed whitespace-pre-line">
+            {activeLockMessage}
           </p>
         </div>
       </div>
@@ -668,6 +750,62 @@ export default function ChampionshipsTab({
                 )}
                 <span>📥 Download PDF</span>
               </button>
+            </div>
+          </div>
+
+          {/* Custom Lock Notice Message Editor */}
+          <div className="pt-3.5 border-t border-white/10 bg-black/25 p-3.5 sm:p-4 rounded-2xl border border-white/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-md bg-amber-400/20 text-amber-300">
+                  <Megaphone className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-xs font-bold text-slate-200">
+                  Public Lock Screen Notice (Customize Title & Subtitle)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveLockNotice}
+                disabled={isSavingLockNotice}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#F26430] hover:bg-orange-600 text-white transition-all cursor-pointer shadow-sm disabled:opacity-50 self-end sm:self-auto"
+                title="Save lock screen heading and message"
+              >
+                {isSavingLockNotice ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                <span>💾 Save Message</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                  Lock Title / Heading Input:
+                </label>
+                <input
+                  type="text"
+                  value={lockTitleInput}
+                  onChange={(e) => setLockTitleInput(e.target.value)}
+                  placeholder="⏳ Fetching Overall & Championship Results..."
+                  className="w-full bg-slate-950/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                  Lock Subtitle / Description Input (Multi-line supported):
+                </label>
+                <textarea
+                  rows={2}
+                  value={lockMessageInput}
+                  onChange={(e) => setLockMessageInput(e.target.value)}
+                  placeholder="Final championship standings are currently being verified. Please check back later! (You can still view all Item-wise Results and Resources)."
+                  className="w-full bg-slate-950/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                />
+              </div>
             </div>
           </div>
 

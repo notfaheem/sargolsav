@@ -74,6 +74,21 @@ export default function AdminPortal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
+  // Custom Lock Notice Message State
+  const [lockTitleInput, setLockTitleInput] = useState(() => {
+    return (
+      localStorage.getItem('sargolsav_lock_title') ||
+      '⏳ Fetching Overall & Championship Results...'
+    );
+  });
+  const [lockMessageInput, setLockMessageInput] = useState(() => {
+    return (
+      localStorage.getItem('sargolsav_lock_message') ||
+      'Final championship standings are currently being verified. Please check back later! (You can still view all Item-wise Results and Resources).'
+    );
+  });
+  const [isSavingLockMessage, setIsSavingLockMessage] = useState(false);
+
   // Check existing session
   useEffect(() => {
     const savedSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -120,6 +135,16 @@ export default function AdminPortal() {
           popup_btn2_url: data.popup_btn2_url || '',
           popup_frequency: typeof data.popup_frequency === 'number' ? data.popup_frequency : 1,
         });
+
+        if (data.manual_overrides?.lock_title) {
+          setLockTitleInput(data.manual_overrides.lock_title);
+          localStorage.setItem('sargolsav_lock_title', data.manual_overrides.lock_title);
+        }
+        if (data.manual_overrides?.lock_message) {
+          setLockMessageInput(data.manual_overrides.lock_message);
+          localStorage.setItem('sargolsav_lock_message', data.manual_overrides.lock_message);
+        }
+
         logger.success('SETTINGS_FETCH', 'Loaded festival configuration row (id=1)');
       }
     } catch (err) {
@@ -262,6 +287,54 @@ export default function AdminPortal() {
       setToast({ message: 'Toggled lock locally', type: 'info' });
     } finally {
       setIsTogglingChampLock(false);
+    }
+  };
+
+  // Save Lock Notice Heading & Message from Settings Tab
+  const handleSaveLockNotice = async () => {
+    setIsSavingLockMessage(true);
+    try {
+      const nextOverrides = {
+        ...(settings.manual_overrides || {}),
+        is_locked: settings.is_championships_locked !== false,
+        lock_title: lockTitleInput,
+        lock_message: lockMessageInput,
+      };
+
+      const { error } = await supabase
+        .from('settings')
+        .update({ manual_overrides: nextOverrides })
+        .eq('id', 1);
+
+      if (error) {
+        console.warn('Fallback saving notice via notice_text...', error.message);
+        await supabase
+          .from('settings')
+          .update({
+            notice_text: `JSON:{"type":"MANUAL_OVERRIDES","data":${JSON.stringify(nextOverrides)}}`,
+          })
+          .eq('id', 1);
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        manual_overrides: nextOverrides,
+      }));
+      localStorage.setItem('sargolsav_manual_overrides', JSON.stringify(nextOverrides));
+      localStorage.setItem('sargolsav_lock_title', lockTitleInput);
+      localStorage.setItem('sargolsav_lock_message', lockMessageInput);
+
+      setToast({
+        message: '💾 Lock screen title & message saved successfully!',
+        type: 'success',
+      });
+    } catch (err) {
+      console.error('Error saving lock notice:', err);
+      localStorage.setItem('sargolsav_lock_title', lockTitleInput);
+      localStorage.setItem('sargolsav_lock_message', lockMessageInput);
+      setToast({ message: 'Saved lock message locally (offline fallback)', type: 'info' });
+    } finally {
+      setIsSavingLockMessage(false);
     }
   };
 
@@ -744,46 +817,99 @@ export default function AdminPortal() {
                   </button>
                 </div>
 
-                {/* 4. Public Championships Visibility (Lock / Unlock) */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 gap-4">
-                  <div className="space-y-1 pr-2">
-                    <label
-                      className="text-sm font-bold text-[#1B254B] flex items-center gap-1.5"
+                {/* 4. Public Championships Visibility (Lock / Unlock) & Notice Customization */}
+                <div className="p-4.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1 pr-2">
+                      <label
+                        className="text-sm font-bold text-[#1B254B] flex items-center gap-1.5"
+                      >
+                        {settings.is_championships_locked !== false ? (
+                          <Lock className="w-4 h-4 text-amber-700" />
+                        ) : (
+                          <Unlock className="w-4 h-4 text-emerald-600" />
+                        )}
+                        <span>Public Championships Visibility (Lock / Unlock)</span>
+                      </label>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        When <strong>LOCKED</strong> (default), Overall Madrasa Podiums, Category Standings, and Individual Champions are hidden on the public site with a verification notice. Item-wise results and resources remain completely open.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTogglePublicChampLock}
+                      disabled={isTogglingChampLock}
+                      className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md border shrink-0 ${
+                        settings.is_championships_locked !== false
+                          ? 'bg-amber-500 hover:bg-amber-600 text-amber-950 border-amber-400'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500'
+                      }`}
                     >
-                      {settings.is_championships_locked !== false ? (
-                        <Lock className="w-4 h-4 text-amber-700" />
+                      {isTogglingChampLock ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : settings.is_championships_locked !== false ? (
+                        <Lock className="w-3.5 h-3.5" />
                       ) : (
-                        <Unlock className="w-4 h-4 text-emerald-600" />
+                        <Unlock className="w-3.5 h-3.5" />
                       )}
-                      <span>Public Championships Visibility (Lock / Unlock)</span>
-                    </label>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      When <strong>LOCKED</strong> (default), Overall Madrasa Podiums, Category Standings, and Individual Champions are hidden on the public site with a verification notice. Item-wise results and resources remain completely open.
-                    </p>
+                      <span>
+                        {settings.is_championships_locked !== false
+                          ? '🔒 Public Championships: LOCKED (Click to Unlock)'
+                          : '🔓 Public Championships: UNLOCKED (Click to Lock)'}
+                      </span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleTogglePublicChampLock}
-                    disabled={isTogglingChampLock}
-                    className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md border shrink-0 ${
-                      settings.is_championships_locked !== false
-                        ? 'bg-amber-500 hover:bg-amber-600 text-amber-950 border-amber-400'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500'
-                    }`}
-                  >
-                    {isTogglingChampLock ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : settings.is_championships_locked !== false ? (
-                      <Lock className="w-3.5 h-3.5" />
-                    ) : (
-                      <Unlock className="w-3.5 h-3.5" />
-                    )}
-                    <span>
-                      {settings.is_championships_locked !== false
-                        ? '🔒 Public Championships: LOCKED (Click to Unlock)'
-                        : '🔓 Public Championships: UNLOCKED (Click to Lock)'}
-                    </span>
-                  </button>
+
+                  {/* Customized Lock Notice Heading & Subtitle */}
+                  <div className="pt-3 border-t border-amber-200/80 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-[#1B254B] flex items-center gap-1.5">
+                        <Megaphone className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Customize Lock Screen Message (Displayed on public site when locked)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSaveLockNotice}
+                        disabled={isSavingLockMessage}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#1B254B] hover:bg-slate-800 text-white transition-all cursor-pointer shadow-xs disabled:opacity-50 self-end sm:self-auto"
+                      >
+                        {isSavingLockMessage ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#F26430]" />
+                        ) : (
+                          <Save className="w-3.5 h-3.5 text-amber-400" />
+                        )}
+                        <span>💾 Save Message</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                          Lock Title / Heading Input:
+                        </label>
+                        <input
+                          type="text"
+                          value={lockTitleInput}
+                          onChange={(e) => setLockTitleInput(e.target.value)}
+                          placeholder="⏳ Fetching Overall & Championship Results..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-[#1B254B]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                          Lock Subtitle / Description Input (Multi-line supported):
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={lockMessageInput}
+                          onChange={(e) => setLockMessageInput(e.target.value)}
+                          placeholder="Final championship standings are currently being verified..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-[#1B254B] focus:outline-hidden focus:ring-2 focus:ring-[#1B254B]"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 5. Admin PIN */}
@@ -1227,7 +1353,13 @@ export default function AdminPortal() {
         )}
 
         {/* Championships & Standings Tab */}
-        {activeTab === 'championships' && <ChampionshipsTab isAdmin={true} />}
+        {activeTab === 'championships' && (
+          <ChampionshipsTab
+            isAdmin={true}
+            lockTitle={lockTitleInput}
+            lockMessage={lockMessageInput}
+          />
+        )}
 
         {/* Resources Tab */}
         {activeTab === 'resources' && (
