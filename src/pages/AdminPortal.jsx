@@ -55,6 +55,9 @@ export default function AdminPortal() {
     show_announcement: false,
     enforce_min_entry_rule: false,
     admin_pin: '2026',
+    // Public Championships Lock
+    is_championships_locked: true,
+    manual_overrides: null,
     // Global Popup Settings
     is_popup_active: false,
     popup_heading: '',
@@ -102,6 +105,11 @@ export default function AdminPortal() {
           show_announcement: Boolean(data.show_announcement),
           enforce_min_entry_rule: Boolean(data.enforce_min_entry_rule),
           admin_pin: data.admin_pin || '2026',
+          is_championships_locked:
+            data.is_championships_locked !== undefined
+              ? Boolean(data.is_championships_locked)
+              : true,
+          manual_overrides: data.manual_overrides || null,
           is_popup_active: Boolean(data.is_popup_active),
           popup_heading: data.popup_heading || '',
           popup_message: data.popup_message || '',
@@ -202,6 +210,61 @@ export default function AdminPortal() {
     reader.readAsDataURL(file);
   };
 
+  // Handle Toggle Public Championships Lock (Feature 1)
+  const [isTogglingChampLock, setIsTogglingChampLock] = useState(false);
+  const handleTogglePublicChampLock = async () => {
+    setIsTogglingChampLock(true);
+    const newLockState = settings.is_championships_locked === false ? true : false;
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .update({
+          is_championships_locked: newLockState,
+          manual_overrides: {
+            ...(settings.manual_overrides || {}),
+            is_locked: newLockState,
+          },
+        })
+        .eq('id', 1);
+
+      if (error) {
+        console.warn('Fallback update lock in manual_overrides...', error.message);
+        await supabase
+          .from('settings')
+          .update({
+            manual_overrides: {
+              ...(settings.manual_overrides || {}),
+              is_locked: newLockState,
+            },
+          })
+          .eq('id', 1);
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        is_championships_locked: newLockState,
+        manual_overrides: {
+          ...(prev.manual_overrides || {}),
+          is_locked: newLockState,
+        },
+      }));
+      localStorage.setItem('sargolsav_championships_locked', String(newLockState));
+      setToast({
+        message: newLockState
+          ? '🔒 Public Championships: LOCKED (Hidden from public view)'
+          : '🔓 Public Championships: UNLOCKED (Now live to public)',
+        type: 'success',
+      });
+    } catch (err) {
+      console.error('Error toggling champ lock:', err);
+      setSettings((prev) => ({ ...prev, is_championships_locked: newLockState }));
+      localStorage.setItem('sargolsav_championships_locked', String(newLockState));
+      setToast({ message: 'Toggled lock locally', type: 'info' });
+    } finally {
+      setIsTogglingChampLock(false);
+    }
+  };
+
   // Handle Save Settings
   const handleSaveSettings = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -214,6 +277,7 @@ export default function AdminPortal() {
         show_announcement: settings.show_announcement,
         enforce_min_entry_rule: settings.enforce_min_entry_rule,
         admin_pin: settings.admin_pin,
+        is_championships_locked: settings.is_championships_locked,
         is_popup_active: settings.is_popup_active,
         popup_heading: settings.popup_heading,
         popup_message: settings.popup_message,
@@ -680,7 +744,49 @@ export default function AdminPortal() {
                   </button>
                 </div>
 
-                {/* 4. Admin PIN */}
+                {/* 4. Public Championships Visibility (Lock / Unlock) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4.5 rounded-2xl bg-amber-50/70 border border-amber-200/90 gap-4">
+                  <div className="space-y-1 pr-2">
+                    <label
+                      className="text-sm font-bold text-[#1B254B] flex items-center gap-1.5"
+                    >
+                      {settings.is_championships_locked !== false ? (
+                        <Lock className="w-4 h-4 text-amber-700" />
+                      ) : (
+                        <Unlock className="w-4 h-4 text-emerald-600" />
+                      )}
+                      <span>Public Championships Visibility (Lock / Unlock)</span>
+                    </label>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      When <strong>LOCKED</strong> (default), Overall Madrasa Podiums, Category Standings, and Individual Champions are hidden on the public site with a verification notice. Item-wise results and resources remain completely open.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTogglePublicChampLock}
+                    disabled={isTogglingChampLock}
+                    className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-md border shrink-0 ${
+                      settings.is_championships_locked !== false
+                        ? 'bg-amber-500 hover:bg-amber-600 text-amber-950 border-amber-400'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500'
+                    }`}
+                  >
+                    {isTogglingChampLock ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : settings.is_championships_locked !== false ? (
+                      <Lock className="w-3.5 h-3.5" />
+                    ) : (
+                      <Unlock className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {settings.is_championships_locked !== false
+                        ? '🔒 Public Championships: LOCKED (Click to Unlock)'
+                        : '🔓 Public Championships: UNLOCKED (Click to Lock)'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* 5. Admin PIN */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <KeyRound className="w-4 h-4 text-[#1B254B]" />
@@ -1121,7 +1227,7 @@ export default function AdminPortal() {
         )}
 
         {/* Championships & Standings Tab */}
-        {activeTab === 'championships' && <ChampionshipsTab />}
+        {activeTab === 'championships' && <ChampionshipsTab isAdmin={true} />}
 
         {/* Resources Tab */}
         {activeTab === 'resources' && (

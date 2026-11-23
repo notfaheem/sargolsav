@@ -36,11 +36,18 @@ export default function PublicPortal() {
   // Selected item for Result View Modal (published result or awaiting notice)
   const [selectedModalItem, setSelectedModalItem] = useState(null);
 
-  // Public settings state (strictly announcement text and visibility)
+  // Public settings state (strictly announcement text, visibility, and championships lock)
   const [settings, setSettings] = useState({
     announcement_text: '',
     show_announcement: false,
+    is_championships_locked: true, // Strict default: LOCKED
+    manual_overrides: null,
   });
+
+  // Strict Championship Lock: Default to TRUE (LOCKED) unless explicitly set to false in Supabase
+  const isChampLocked =
+    settings?.is_championships_locked !== false &&
+    settings?.manual_overrides?.is_locked !== false;
 
   // Global Announcement Popup Modal state
   const [showPopup, setShowPopup] = useState(false);
@@ -141,6 +148,8 @@ export default function PublicPortal() {
           setSettings({
             announcement_text: data.announcement_text || '',
             show_announcement: Boolean(data.show_announcement),
+            is_championships_locked: data.is_championships_locked,
+            manual_overrides: data.manual_overrides || null,
           });
           evaluatePopupTrigger(data);
         }
@@ -475,8 +484,10 @@ export default function PublicPortal() {
           </div>
         )}
 
-        {/* Championships & Podiums Tab */}
-        {activeTab === 'championships' && <ChampionshipsTab />}
+        {/* Championships & Podiums Tab (Protected by default-lock) */}
+        {activeTab === 'championships' && (
+          <ChampionshipsTab isChampLocked={isChampLocked} isAdmin={false} />
+        )}
 
         {/* Resources Tab */}
         {activeTab === 'resources' && <PublicResourcesTab />}

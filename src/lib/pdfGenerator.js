@@ -134,3 +134,64 @@ export async function downloadScoreSheetPdf(containerId, itemCode) {
   return filename;
 }
 
+/**
+ * Generates an official Championship Standings A4 PDF.
+ *
+ * @param {string} containerId - DOM ID of the element to render
+ * @param {string} filename - Filename for download
+ */
+export async function downloadChampionshipPdf(containerId, filename = 'Sargolsav_2026_Championship_Standings.pdf') {
+  const element = document.getElementById(containerId);
+  if (!element) {
+    throw new Error(`Championship PDF Template container #${containerId} not found in DOM`);
+  }
+
+  const images = element.getElementsByTagName('img');
+  await Promise.all(
+    Array.from(images).map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff',
+    windowWidth: 900,
+    scrollX: 0,
+    scrollY: 0,
+  });
+
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfPageHeight = pdf.internal.pageSize.getHeight();
+  const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+  heightLeft -= pdfPageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+    heightLeft -= pdfPageHeight;
+  }
+
+  pdf.save(filename);
+  return filename;
+}
+
